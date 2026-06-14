@@ -5,9 +5,17 @@ import path from "node:path";
 
 export default defineConfig({
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "src"),
-    },
+    // The shared weather/radar/nowcast logic has a single source of truth at
+    // mobile/src/lib (so the Expo app + EAS keep it inside their own tree).
+    // The web app reaches into it via `@/lib/*`; everything else `@/*` is the
+    // web app's own src. Order matters — first match wins.
+    alias: [
+      {
+        find: /^@\/lib\//,
+        replacement: path.resolve(__dirname, "mobile/src/lib") + "/",
+      },
+      { find: "@", replacement: path.resolve(__dirname, "src") },
+    ],
   },
   plugins: [
     react(),

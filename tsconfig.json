@@ -19,8 +19,9 @@
     "types": ["vite/client", "geojson"],
     "baseUrl": ".",
     "paths": {
+      "@/lib/*": ["mobile/src/lib/*"],
       "@/*": ["src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "mobile/src/lib"]
 }
