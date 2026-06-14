@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+mobile/node_modules/
+
+# Web build output
+dist/
+*.tsbuildinfo
+
+# Expo / React Native generated native projects (regenerated via `expo prebuild`)
+mobile/android/
+mobile/ios/
+mobile/.expo/
+mobile/expo-env.d.ts
+mobile/web-build/
+
+# Build artifacts
+*.apk
+*.aab
+*.ipa
+*.hprof
+
+# Logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local tooling / agent config
+.claude/

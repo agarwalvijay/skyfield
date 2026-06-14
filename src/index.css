@@ -1,0 +1,352 @@
+:root {
+  /* Foreground is always light; the sky background carries the color. */
+  --fg: #f3f6fc;
+  --fg-dim: rgba(243, 246, 252, 0.66);
+  --fg-faint: rgba(243, 246, 252, 0.42);
+  --line: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.2);
+
+  /* Glass surfaces layered over the sky gradient. */
+  --glass: rgba(255, 255, 255, 0.08);
+  --glass-strong: rgba(255, 255, 255, 0.13);
+  --glass-border: rgba(255, 255, 255, 0.16);
+
+  --accent: #ffd166;
+  --danger: #ff5a5f;
+  --warn: #ffb84d;
+
+  --radius: 22px;
+  --radius-sm: 14px;
+  --radius-lg: 30px;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Hanken Grotesk", -apple-system, system-ui, sans-serif;
+
+  --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.22);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--fg);
+  background: #06080e;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+input {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+::selection {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ---- Numeric + display type ---- */
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+
+/* ---- Glass card ---- */
+.card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  box-shadow: var(--shadow-card);
+}
+
+/* ---- App scaffolding ---- */
+.app {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  overflow: hidden;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+}
+
+.scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: calc(96px + var(--safe-bottom));
+}
+.scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.page {
+  padding: 0 18px;
+}
+
+/* Grain overlay for atmosphere/depth. */
+.grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  z-index: 5;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---- Bottom tab bar ---- */
+.tabbar {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(14px + var(--safe-bottom));
+  z-index: 30;
+  display: flex;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(14, 18, 28, 0.62);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(22px) saturate(1.4);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 9px 15px;
+  border-radius: 999px;
+  color: var(--fg-faint);
+  transition: color 0.25s var(--ease);
+  position: relative;
+}
+.tab[data-active="true"] {
+  color: var(--fg);
+}
+.tab svg {
+  width: 21px;
+  height: 21px;
+}
+.tab span {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.tab-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--glass-strong);
+  z-index: -1;
+}
+
+/* ---- Generic list rows ---- */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--line);
+  border: none;
+  margin: 0;
+}
+
+.muted {
+  color: var(--fg-dim);
+}
+.faint {
+  color: var(--fg-faint);
+}
+
+/* Pressable affordance for tappable cards/rows. */
+.pressable {
+  transition: transform 0.12s var(--ease), background 0.2s var(--ease);
+}
+.pressable:active {
+  transform: scale(0.975);
+}
+
+.locating {
+  position: relative;
+  z-index: 10;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: var(--fg);
+  animation: spin 0.8s linear infinite;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Reveal animation utility for staggered loads handled by Motion. */
+/* ---- Weather glyph animations ---- */
+.glyph-spin {
+  animation: glyph-spin 26s linear infinite;
+}
+@keyframes glyph-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.rain line {
+  animation: rain-fall 1s linear infinite;
+}
+@keyframes rain-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.snow circle {
+  animation: snow-fall 2.4s ease-in-out infinite;
+}
+@keyframes snow-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+}
+.bolt {
+  animation: bolt-flash 3.2s ease-in-out infinite;
+}
+@keyframes bolt-flash {
+  0%, 88%, 100% {
+    opacity: 1;
+  }
+  90%, 94% {
+    opacity: 0.25;
+  }
+  92% {
+    opacity: 1;
+  }
+}
+.wind {
+  animation: wind-shift 3s ease-in-out infinite;
+}
+@keyframes wind-shift {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+.fog-line {
+  animation: fog-drift 4s ease-in-out infinite;
+}
+.fog-line-2 {
+  animation-delay: 0.6s;
+}
+@keyframes fog-drift {
+  0%, 100% {
+    transform: translateX(-2px);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateX(3px);
+    opacity: 1;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.06) 30%,
+    rgba(255, 255, 255, 0.13) 50%,
+    rgba(255, 255, 255, 0.06) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 12px;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}

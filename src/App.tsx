@@ -1,0 +1,137 @@
+import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { motion } from "motion/react";
+import "./components/sky.css";
+import "./components/ui.css";
+import { GPS_ID, useGeolocation } from "@/hooks/useGeolocation";
+import { useLocationStore, type SavedLocation } from "@/store/locations";
+import { usePointMeta, useCurrentConditions, useAlerts, useNowcast } from "@/hooks/useWeather";
+import { effectiveCondition } from "@/lib/weather/effective";
+import { skyFor } from "@/lib/weather/sky";
+import { SkyBackground } from "@/components/SkyBackground";
+import { WeatherProvider } from "@/components/WeatherContext";
+import { TabBar, type TabId } from "@/components/TabBar";
+import { TopBar } from "@/components/TopBar";
+import { LocationSheet } from "@/components/LocationSheet";
+import { AlertBanner } from "@/components/AlertBanner";
+import { NowScreen } from "@/screens/NowScreen";
+import { HourlyScreen } from "@/screens/HourlyScreen";
+import { DailyScreen } from "@/screens/DailyScreen";
+import { RadarScreen } from "@/screens/RadarScreen";
+import { MoreScreen } from "@/screens/MoreScreen";
+import { Welcome } from "@/components/Welcome";
+
+export default function App() {
+  const queryClient = useQueryClient();
+  const { status, locate } = useGeolocation(true);
+  const locations = useLocationStore((s) => s.locations);
+  const activeId = useLocationStore((s) => s.activeId);
+  const gps = useLocationStore((s) => s.gps);
+
+  const [tab, setTab] = useState<TabId>("now");
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  // When GPS is the chosen location but the live fix isn't ready, don't fall
+  // back to a saved location (which would show its forecast, then jump to GPS).
+  const gpsPending = activeId === GPS_ID && !gps && status === "locating";
+
+  const active: SavedLocation | null = useMemo(() => {
+    if (gpsPending) return null;
+    if (gps && activeId === gps.id) return gps;
+    return locations.find((l) => l.id === activeId) ?? gps ?? locations[0] ?? null;
+  }, [locations, activeId, gps, gpsPending]);
+
+  const coords = active ? { lat: active.lat, lon: active.lon } : null;
+  const metaQ = usePointMeta(coords);
+  const nowcastQ = useNowcast(coords);
+  // Match the current-conditions station to the radar intensity at the exact
+  // point (fixes a distant clear/light airport masking a local storm).
+  const radarLevel = nowcastQ.data?.radarLevel ?? 0;
+  const currentQ = useCurrentConditions(metaQ.data, radarLevel);
+  const alertsQ = useAlerts(coords);
+
+  // Derive sky from the effective condition (radar-driven during precip).
+  const sky = useMemo(() => {
+    const hour = new Date().getHours();
+    const dayHint = hour >= 6 && hour < 19;
+    const cond = effectiveCondition({
+      textDescription: currentQ.data?.textDescription,
+      icon: currentQ.data?.icon,
+      temperatureC: currentQ.data?.temperatureC,
+      radarLevel,
+      isDayHint: dayHint,
+    });
+    return { cond, theme: skyFor(cond.code, cond.isDay) };
+  }, [currentQ.data, radarLevel]);
+
+  // Keep the theme-color meta in sync for the system UI.
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", sky.theme.gradient[0]);
+  }, [sky.theme]);
+
+  const locating = status === "locating" && !active;
+
+  return (
+    <div className="app">
+      <SkyBackground theme={sky.theme} code={sky.cond.code} isDay={sky.cond.isDay} />
+      <div className="grain" />
+
+      {locating ? (
+        <div className="locating">
+          <span className="spinner" />
+          <p className="muted">Finding your location…</p>
+        </div>
+      ) : !active ? (
+        <Welcome status={status} onUseLocation={locate} onSearch={() => setSheetOpen(true)} />
+      ) : (
+        <WeatherProvider
+          value={{
+            location: active,
+            coords,
+            meta: metaQ.data,
+            metaLoading: metaQ.isLoading,
+            metaError: (metaQ.error as Error) ?? null,
+          }}
+        >
+          <TopBar
+            location={active}
+            nearby={metaQ.data?.city ? `${metaQ.data.city}, ${metaQ.data.state}` : undefined}
+            onOpenLocations={() => setSheetOpen(true)}
+            onRefresh={() => queryClient.invalidateQueries()}
+            refreshing={currentQ.isFetching || metaQ.isFetching}
+          />
+
+          {alertsQ.data && alertsQ.data.length > 0 && (
+            <AlertBanner alerts={alertsQ.data} accent={sky.theme.accent} />
+          )}
+
+          <div className="screen-wrap">
+            {/* No AnimatePresence here: with mode="wait", a dropped exit
+               completion leaves the next tab unmounted (blank screen). The
+               keyed remount still plays the enter animation. */}
+            <motion.div
+              key={tab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              style={{ height: "100%" }}
+            >
+              {tab === "now" && (
+                <NowScreen sky={sky} alerts={alertsQ.data ?? []} onSeeDaily={() => setTab("daily")} />
+              )}
+              {tab === "hourly" && <HourlyScreen />}
+              {tab === "daily" && <DailyScreen accent={sky.theme.accent} />}
+              {tab === "radar" && <RadarScreen alerts={alertsQ.data ?? []} />}
+              {tab === "more" && <MoreScreen accent={sky.theme.accent} />}
+            </motion.div>
+          </div>
+
+          <TabBar active={tab} onChange={setTab} alertCount={alertsQ.data?.length ?? 0} />
+        </WeatherProvider>
+      )}
+
+      <LocationSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
+    </div>
+  );
+}

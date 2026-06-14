@@ -1,0 +1,91 @@
+{
+  "expo": {
+    "name": "Skyfield",
+    "slug": "skyfield",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0a0e1a",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0e1a"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.atsumilabs.skyfield",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Skyfield uses your location to show hyperlocal National Weather Service forecasts for exactly where you are.",
+        "UIBackgroundModes": [
+          "fetch",
+          "processing"
+        ]
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.atsumilabs.skyfield"
+        ]
+      },
+      "appleTeamId": "XXXXXXXXXX"
+    },
+    "android": {
+      "package": "com.atsumilabs.skyfield",
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0e1a",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ]
+    },
+    "plugins": [
+      "@bacons/apple-targets",
+      "expo-font",
+      "expo-location",
+      "expo-notifications",
+      "expo-background-task",
+      "@maplibre/maplibre-react-native",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "SkyfieldSmall",
+              "label": "Skyfield Small",
+              "description": "Current temperature and conditions",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "widgetFeatures": "reconfigurable|configuration_optional",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "SkyfieldLarge",
+              "label": "Skyfield Banner",
+              "description": "Compact banner: conditions, hi/lo, wind, humidity, alerts",
+              "minWidth": "250dp",
+              "minHeight": "60dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 1,
+              "resizeMode": "horizontal|vertical",
+              "widgetFeatures": "reconfigurable|configuration_optional",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ]
+    ],
+    "experiments": {
+      "tsconfigPaths": true
+    }
+  }
+}
