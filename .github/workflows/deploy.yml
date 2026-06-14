@@ -48,9 +48,9 @@ jobs:
             --exclude 'src' \
             --exclude 'public' \
             --exclude 'scripts' \
-            --exclude 'index.html' \
-            --exclude 'tsconfig*' \
-            --exclude 'vite.config.ts' \
+            --exclude '/index.html' \
+            --exclude '/tsconfig*' \
+            --exclude '/vite.config.ts' \
             --exclude '*.log' \
             -e "ssh -i ~/.ssh/id_deploy -p $PORT -o StrictHostKeyChecking=yes" \
             ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"

@@ -24,6 +24,7 @@ const MIME = {
   ".woff": "font/woff",
   ".map": "application/json; charset=utf-8",
   ".txt": "text/plain; charset=utf-8",
+  ".xml": "application/xml; charset=utf-8",
 };
 
 /** Long-cache hashed build assets; never cache the app shell / SW / manifest. */
