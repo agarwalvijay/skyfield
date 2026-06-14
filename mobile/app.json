@@ -86,6 +86,29 @@
     ],
     "experiments": {
       "tsconfigPaths": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "bundleIdentifier": "com.atsumilabs.skyfield.widget",
+                  "targetName": "SkyfieldWidget",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.atsumilabs.skyfield"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "17f4843e-c4bf-4c20-98cb-b1428573a981"
+      }
+    },
+    "owner": "dumroo"
   }
 }
