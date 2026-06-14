@@ -58,7 +58,12 @@ export function RadarMap({ forecast, gps, viewingGps, alerts }: Props) {
   const { radarColor, radarBasemap } = useSettings();
 
   const [frameIdx, setFrameIdx] = useState(0);
-  const [playing, setPlaying] = useState(true);
+  // Open paused on the latest (current) frame; play restarts from the oldest.
+  const [playing, setPlaying] = useState(false);
+  const togglePlay = () => {
+    if (!playing) setFrameIdx(0);
+    setPlaying((p) => !p);
+  };
   const framesRef = useRef<RadarFrame[]>([]);
 
   // ---- Init map (recreated when the basemap setting changes; all overlays
@@ -267,7 +272,7 @@ export function RadarMap({ forecast, gps, viewingGps, alerts }: Props) {
       <div className="radar-controls card">
         <button
           className="radar-play"
-          onClick={() => setPlaying((p) => !p)}
+          onClick={togglePlay}
           aria-label={playing ? "Pause" : "Play"}
         >
           {playing ? (

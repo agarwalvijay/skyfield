@@ -838,6 +838,8 @@
   gap: 12px;
   padding: 10px 14px;
   z-index: 5;
+  /* Stay dark over light/streets basemaps (overrides the .card glass). */
+  background: rgba(14, 18, 28, 0.85);
 }
 .radar-play {
   width: 40px;
