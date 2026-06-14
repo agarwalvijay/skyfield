@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://skyfield.atsumilabs.com/sitemap.xml
