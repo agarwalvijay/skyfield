@@ -7,8 +7,10 @@ import type { Nowcast, NowcastInterval } from "./openmeteo";
 const Z = 7; // RainViewer free max zoom
 
 function tileUrl(host: string, frame: RadarFrame, x: number, y: number): string {
-  // color scheme 4, smooth, no snow flag
-  return `${host}${frame.path}/256/${Z}/${x}/${y}/4/1_1.png`;
+  // color scheme 4, NO smoothing (0_1): smoothed tiles paint soft grey halos
+  // around echoes that misclassify as precip. The map display uses smoothing
+  // for looks; sampling uses crisp tiles for accurate pixel→intensity.
+  return `${host}${frame.path}/256/${Z}/${x}/${y}/4/0_1.png`;
 }
 
 /** Highest level among the point pixel + a ring ~20km around it. */

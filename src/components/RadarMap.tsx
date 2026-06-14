@@ -65,6 +65,13 @@ export function RadarMap({ forecast, gps, viewingGps, alerts }: Props) {
     setPlaying((p) => !p);
   };
   const framesRef = useRef<RadarFrame[]>([]);
+  // Mirror frameIdx into a ref so the (async) layer-setup effect can apply the
+  // active frame's opacity the moment its layers exist, without depending on
+  // frameIdx (which would re-add layers on every animation tick).
+  const frameIdxRef = useRef(0);
+  useEffect(() => {
+    frameIdxRef.current = frameIdx;
+  }, [frameIdx]);
 
   // ---- Init map (recreated when the basemap setting changes; all overlays
   // re-add themselves via the `ready` flag flipping false → true) ----
@@ -186,6 +193,15 @@ export function RadarMap({ forecast, gps, viewingGps, alerts }: Props) {
           },
           beforeId,
         );
+      }
+      // Layers are added at ~0 opacity; reveal the active frame now that they
+      // exist. Without this the map shows nothing until something else (e.g.
+      // pressing play) re-triggers the frame-display effect below.
+      const activeId = radar.frames[frameIdxRef.current]
+        ? layerId(radar.frames[frameIdxRef.current])
+        : null;
+      if (activeId && map.getLayer(activeId)) {
+        map.setPaintProperty(activeId, "raster-opacity", 0.72);
       }
     };
 

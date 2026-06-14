@@ -49,7 +49,12 @@ export function RadarScreen({ alerts }: { alerts: WeatherAlert[] }) {
   const { radarBasemap, setRadarBasemap, radarColor } = useSettings();
   const { data: radar } = useRadarFrames();
   const [frameIdx, setFrameIdx] = useState(0);
-  const [playing, setPlaying] = useState(true);
+  // Open paused on the latest (current) frame; play restarts from the oldest.
+  const [playing, setPlaying] = useState(false);
+  const togglePlay = () => {
+    if (!playing) setFrameIdx(0);
+    setPlaying((p) => !p);
+  };
   const cameraRef = useRef<CameraRef>(null);
 
   const flyTo = (lon: number, lat: number) =>
@@ -258,7 +263,7 @@ export function RadarScreen({ alerts }: { alerts: WeatherAlert[] }) {
 
         {/* Controls */}
         <View style={s.controls}>
-          <Pressable style={s.play} onPress={() => setPlaying((p) => !p)}>
+          <Pressable style={s.play} onPress={togglePlay}>
             <Svg width={18} height={18} viewBox="0 0 24 24" fill={colors.fg}>
               {playing ? (
                 <>

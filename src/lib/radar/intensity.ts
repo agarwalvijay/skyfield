@@ -5,18 +5,23 @@
 export type RainLevel = 0 | 1 | 2 | 3 | 4; // none, light, moderate, heavy, intense
 
 export function pixelLevel([r, g, b, a]: [number, number, number, number]): RainLevel {
-  if (a < 24) return 0; // transparent = no echo
-  // Palettes ramp cool → warm with intensity. Use hue/brightness heuristics
-  // that hold for RainViewer's blue/green/yellow/red ramps.
-  if (r >= 150 && g < 90 && b < 90) return 4; // deep red
-  if (r >= 180 && g >= 110 && b < 110) return 3; // orange/yellow
-  if (g >= 120 && r < 150) return 2; // green/teal
-  if (b >= 120 && b >= r) return 1; // blue
-  // Fallback by brightness-weighted warmth.
-  const warmth = r - b;
-  if (warmth > 90) return 4;
-  if (warmth > 30) return 3;
-  if (g > 100) return 2;
+  if (a < 40) return 0; // transparent / faint anti-alias edge = no echo
+  // Near-grey pixels (r≈g≈b) are smoothing halos or basemap bleed at echo
+  // edges, NOT real returns — gate them out before the color ramp so a faint
+  // grey edge can't masquerade as precip.
+  if (Math.max(r, g, b) - Math.min(r, g, b) < 30) return 0;
+
+  // RainViewer color-scheme 4 ramp (calibrated from the live palette — note it
+  // has NO green band): blue/cyan → yellow → orange → red.
+  //   blue/cyan  (0,163,224)…(136,221,238), B ≥ R   → light
+  //   yellow     (255,224,0)…                        → moderate
+  //   orange     (255,129,0)…(255,159,0)             → heavy
+  //   red        (193,0,0)…(242,54,0), G & B ≈ 0     → intense
+  if (r >= 180 && g < 80 && b < 80) return 4; // saturated red = intense
+  if (r >= 230 && b < 90) return g >= 165 ? 2 : 3; // yellow=mod, orange=heavy
+  if (b >= 100 && b >= r) return 1; // blue / cyan = light
+  // Anything else — pale/desaturated edge blends — is a low-confidence echo
+  // edge. Never escalate an ambiguous warm-ish color to heavy; call it light.
   return 1;
 }
 
