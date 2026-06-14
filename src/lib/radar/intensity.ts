@@ -6,10 +6,15 @@ export type RainLevel = 0 | 1 | 2 | 3 | 4; // none, light, moderate, heavy, inte
 
 export function pixelLevel([r, g, b, a]: [number, number, number, number]): RainLevel {
   if (a < 40) return 0; // transparent / faint anti-alias edge = no echo
-  // Near-grey pixels (r≈g≈b) are smoothing halos or basemap bleed at echo
-  // edges, NOT real returns — gate them out before the color ramp so a faint
-  // grey edge can't masquerade as precip.
-  if (Math.max(r, g, b) - Math.min(r, g, b) < 30) return 0;
+  // Low-saturation pixels are NOT real precip and must be gated out before the
+  // color ramp. Two culprits, both well below the real palette's saturation:
+  //   • grey halos (r≈g≈b, sat <30) — smoothing/basemap bleed at echo edges
+  //   • pale tan/olive haze (e.g. (218,204,147), sat ~71) — RainViewer's lowest
+  //     sub-precipitation band that blankets huge "clear" areas; not in our
+  //     light/mod/heavy/intense legend and not actionable rain.
+  // Every genuine precip color (blue/cyan/yellow/orange/red) has sat ≥ ~100,
+  // so a single <90 gate drops both without suppressing any real return.
+  if (Math.max(r, g, b) - Math.min(r, g, b) < 90) return 0;
 
   // RainViewer color-scheme 4 ramp (calibrated from the live palette — note it
   // has NO green band): blue/cyan → yellow → orange → red.
