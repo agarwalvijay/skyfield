@@ -14,6 +14,9 @@ import {
 } from "@/lib/nws";
 import { getRadarFrames } from "@/lib/radar/rainviewer";
 import { getNowcast } from "@/lib/nowcast/openmeteo";
+import { getAirQuality, getUvIndex } from "@/lib/weather/airquality";
+import { getTides } from "@/lib/weather/tides";
+import { getNearbyStorms } from "@/lib/weather/tropical";
 
 const key = (lat: number, lon: number) => `${lat.toFixed(3)},${lon.toFixed(3)}`;
 
@@ -103,6 +106,45 @@ export function useNowcast(coords: Coordinates | null) {
     enabled: !!coords,
     staleTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 10,
+  });
+}
+
+export function useAirQuality(coords: Coordinates | null) {
+  return useQuery({
+    queryKey: ["airquality", coords && key(coords.lat, coords.lon)],
+    queryFn: ({ signal }) => getAirQuality(coords!, signal),
+    enabled: !!coords,
+    staleTime: 1000 * 60 * 30,
+    refetchInterval: 1000 * 60 * 60,
+  });
+}
+
+export function useUv(coords: Coordinates | null) {
+  return useQuery({
+    queryKey: ["uv", coords && key(coords.lat, coords.lon)],
+    queryFn: ({ signal }) => getUvIndex(coords!, signal),
+    enabled: !!coords,
+    staleTime: 1000 * 60 * 30,
+    refetchInterval: 1000 * 60 * 30,
+  });
+}
+
+export function useTides(coords: Coordinates | null) {
+  return useQuery({
+    queryKey: ["tides", coords && key(coords.lat, coords.lon)],
+    queryFn: ({ signal }) => getTides(coords!, signal),
+    enabled: !!coords,
+    staleTime: 1000 * 60 * 60,
+  });
+}
+
+export function useStorms(coords: Coordinates | null) {
+  return useQuery({
+    queryKey: ["storms", coords && key(coords.lat, coords.lon)],
+    queryFn: ({ signal }) => getNearbyStorms(coords!, signal),
+    enabled: !!coords,
+    staleTime: 1000 * 60 * 15,
+    refetchInterval: 1000 * 60 * 20,
   });
 }
 

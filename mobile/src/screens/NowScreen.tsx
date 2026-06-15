@@ -3,7 +3,19 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "r
 import { useRefresh } from "@/hooks/useRefresh";
 import Svg, { Path } from "react-native-svg";
 import { useWeatherCtx } from "@/components/WeatherContext";
-import { useCurrentConditions, useForecast, useHourly, useNowcast, useOutlook } from "@/hooks/useWeather";
+import {
+  useCurrentConditions,
+  useForecast,
+  useHourly,
+  useNowcast,
+  useOutlook,
+  useAirQuality,
+  useUv,
+  useTides,
+  useStorms,
+  useGridSeries,
+} from "@/hooks/useWeather";
+import { accumulation } from "@/lib/nws";
 import { useSettings } from "@/store/settings";
 import {
   degToCompass,
@@ -21,6 +33,9 @@ import type { SkyTheme } from "@/lib/weather/sky";
 import { WeatherGlyph } from "@/components/WeatherGlyph";
 import { NowcastCard } from "@/components/NowcastCard";
 import { DailyForecastCard } from "@/components/DailyForecastCard";
+import { AirSunCard } from "@/components/AirSunCard";
+import { TidesCard } from "@/components/TidesCard";
+import { TropicalBanner } from "@/components/TropicalBanner";
 import { ErrorBlock, LoadingBlock, MetricTile, SectionTitle } from "@/components/ui";
 import { card, colors, fonts } from "@/theme";
 
@@ -37,10 +52,18 @@ export function NowScreen({
   const forecast = useForecast(meta);
   const hourly = useHourly(meta);
   const outlook = useOutlook(meta);
+  const air = useAirQuality(coords);
+  const uv = useUv(coords);
+  const tides = useTides(coords);
+  const storms = useStorms(coords);
+  const grid = useGridSeries(meta);
   const { refreshing, onRefresh } = useRefresh();
   const [outlookOpen, setOutlookOpen] = useState(false);
   const { temp, wind, pressure, imperialDistance, clock24h } = useSettings();
   const tz = meta?.timeZone;
+
+  const accum = grid.data ? accumulation(grid.data, 24) : null;
+  const inches = (mm: number) => mm / 25.4;
 
   const freshOutlook =
     outlook.data &&
@@ -115,6 +138,9 @@ export function NowScreen({
         </Pressable>
       )}
 
+      {/* Active tropical cyclone nearby */}
+      {storms.data && storms.data.length > 0 && <TropicalBanner storms={storms.data} />}
+
       {/* Hourly strip */}
       {hourly.data && hourly.data.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.strip} contentContainerStyle={s.stripInner}>
@@ -136,10 +162,46 @@ export function NowScreen({
       {/* MinuteCast */}
       {nowcast.data && <NowcastCard nowcast={nowcast.data} />}
 
+      {/* Upcoming precip totals (next 24h) */}
+      {accum && (accum.rainMm >= 0.3 || accum.snowMm >= 1) && (
+        <View style={s.accumRow}>
+          {accum.rainMm >= 0.3 && (
+            <View style={s.accumPill}>
+              <Text style={s.accumIcon}>💧</Text>
+              <View>
+                <Text style={s.accumVal}>
+                  {imperialDistance ? `${inches(accum.rainMm).toFixed(2)} in` : `${accum.rainMm.toFixed(1)} mm`}
+                </Text>
+                <Text style={s.accumCap}>Rain · next 24h</Text>
+              </View>
+            </View>
+          )}
+          {accum.snowMm >= 1 && (
+            <View style={s.accumPill}>
+              <Text style={s.accumIcon}>❄️</Text>
+              <View>
+                <Text style={s.accumVal}>
+                  {imperialDistance ? `${inches(accum.snowMm).toFixed(1)} in` : `${accum.snowMm.toFixed(0)} mm`}
+                </Text>
+                <Text style={s.accumCap}>Snow · next 24h</Text>
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Multi-day forecast */}
       {forecast.data && forecast.data.length > 0 && (
         <DailyForecastCard periods={forecast.data} accent={sky.theme.accent} days={5} onSeeAll={onSeeDaily} />
       )}
+
+      {/* Air & Sun (AQI · UV · sun/moon) */}
+      {coords && (air.data || uv.data) && (
+        <AirSunCard air={air.data} uv={uv.data} lat={coords.lat} lon={coords.lon} timeZone={tz} />
+      )}
+
+      {/* Tides (coastal only) */}
+      {tides.data && <TidesCard tides={tides.data} timeZone={tz} />}
 
       {/* Narrative */}
       {today && (
@@ -204,6 +266,22 @@ const s = StyleSheet.create({
   heroMetaText: { fontFamily: fonts.bodySemi, fontSize: 15, color: colors.fgDim },
   strip: { ...card, marginTop: 18 },
   stripInner: { paddingVertical: 14, paddingHorizontal: 8 },
+  accumRow: { flexDirection: "row", gap: 8, marginTop: 14 },
+  accumPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.glass,
+  },
+  accumIcon: { fontSize: 18 },
+  accumVal: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.fg },
+  accumCap: { fontFamily: fonts.body, fontSize: 11, color: colors.fgFaint },
   stripItem: { alignItems: "center", gap: 7, width: 56 },
   stripTime: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.fgFaint },
   stripPop: { fontFamily: fonts.bodyBold, fontSize: 10.5, color: "#7fd4ff" },
