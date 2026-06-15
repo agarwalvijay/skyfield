@@ -70,6 +70,27 @@ function expand(values: GridValue[] | undefined, accumulate: boolean): Map<numbe
   return out;
 }
 
+export interface Accumulation {
+  /** Total liquid precip over the window, mm. */
+  rainMm: number;
+  /** Total snowfall over the window, mm (liquid-equiv source). */
+  snowMm: number;
+  /** Hours scanned (the requested window, clamped to available data). */
+  hours: number;
+}
+
+/** Sum upcoming QPF + snowfall over the next `hours` from now. */
+export function accumulation(series: GridSeries, hours = 24): Accumulation {
+  const startHour = Math.floor(Date.now() / 3_600_000);
+  let rainMm = 0;
+  let snowMm = 0;
+  for (let h = 0; h < hours; h++) {
+    rainMm += series.qpfMm.get(startHour + h) ?? 0;
+    snowMm += series.snowMm.get(startHour + h) ?? 0;
+  }
+  return { rainMm, snowMm, hours };
+}
+
 export async function getGridSeries(meta: PointMeta, signal?: AbortSignal): Promise<GridSeries> {
   const data = await nwsFetch<GridDataResponse>(meta.forecastGridDataUrl, { signal });
   const p = data.properties;

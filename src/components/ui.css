@@ -1353,3 +1353,181 @@
 .loc-remove:active {
   color: var(--danger);
 }
+
+/* ---- Air & Sun card ---- */
+.airsun {
+  padding: 16px;
+}
+.airsun-gauges {
+  display: flex;
+  gap: 12px;
+}
+.airsun-gauge {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.airsun-ring {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid var(--c);
+  box-shadow: 0 0 18px -4px var(--c);
+}
+.airsun-num {
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.airsun-cap {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--fg-faint);
+  text-transform: uppercase;
+}
+.airsun-label {
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+.airsun-sub {
+  font-size: 0.72rem;
+}
+.airsun-advice {
+  margin: 12px 0 0;
+  font-size: 0.82rem;
+  color: var(--fg-dim);
+  line-height: 1.4;
+}
+.airsun-sky {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.airsun-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+.airsun-cell-cap {
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+}
+.airsun-cell-val {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+/* ---- Tides card ---- */
+.tides {
+  padding: 16px;
+}
+.tides-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.tides-station {
+  font-size: 0.72rem;
+  text-align: right;
+}
+.tides-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.tides-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.tides-arrow {
+  font-size: 0.9rem;
+}
+.tides-arrow.high {
+  color: #5db8ff;
+}
+.tides-arrow.low {
+  color: var(--fg-faint);
+}
+.tides-type {
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.tides-time {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.tides-ht {
+  font-size: 0.72rem;
+}
+
+/* ---- Tropical storm banner ---- */
+.tropical {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-color: rgba(255, 159, 64, 0.4);
+  background: linear-gradient(135deg, rgba(255, 159, 64, 0.16), rgba(255, 90, 95, 0.1));
+}
+.tropical-icon {
+  font-size: 1.9rem;
+  animation: glyph-spin 8s linear infinite;
+}
+.tropical-title {
+  font-weight: 700;
+  font-size: 0.96rem;
+}
+.tropical-meta {
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+.tropical-more {
+  font-size: 0.72rem;
+  margin-top: 2px;
+}
+
+/* ---- Accumulation pills (in nowcast / conditions) ---- */
+.accum-pills {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.accum-pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--glass);
+  border: 1px solid var(--line);
+}
+.accum-pill .accum-icon {
+  font-size: 1.1rem;
+}
+.accum-pill .accum-val {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.accum-pill .accum-cap {
+  font-size: 0.68rem;
+  color: var(--fg-faint);
+  letter-spacing: 0.04em;
+}

@@ -1,7 +1,19 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { useWeatherCtx } from "@/components/WeatherContext";
-import { useCurrentConditions, useForecast, useHourly, useNowcast, useOutlook } from "@/hooks/useWeather";
+import {
+  useCurrentConditions,
+  useForecast,
+  useHourly,
+  useNowcast,
+  useOutlook,
+  useAirQuality,
+  useUv,
+  useTides,
+  useStorms,
+  useGridSeries,
+} from "@/hooks/useWeather";
+import { accumulation } from "@/lib/nws";
 import { useSettings } from "@/store/settings";
 import {
   degToCompass,
@@ -22,6 +34,9 @@ import { MetricTile } from "@/components/MetricTile";
 import { HourlyStrip } from "@/components/HourlyStrip";
 import { NowcastCard } from "@/components/NowcastCard";
 import { DailyForecastCard } from "@/components/DailyForecastCard";
+import { AirSunCard } from "@/components/AirSunCard";
+import { TidesCard } from "@/components/TidesCard";
+import { TropicalBanner } from "@/components/TropicalBanner";
 import { LoadingBlock, ErrorBlock } from "@/components/States";
 
 const fade = {
@@ -44,8 +59,17 @@ export function NowScreen({
   const forecast = useForecast(meta);
   const hourly = useHourly(meta);
   const outlook = useOutlook(meta);
+  const air = useAirQuality(coords);
+  const uv = useUv(coords);
+  const tides = useTides(coords);
+  const storms = useStorms(coords);
+  const grid = useGridSeries(meta);
   const [outlookOpen, setOutlookOpen] = useState(false);
   const { temp, wind, pressure, imperialDistance } = useSettings();
+
+  // Upcoming precip totals (next 24h) from the NWS grid.
+  const accum = grid.data ? accumulation(grid.data, 24) : null;
+  const inches = (mm: number) => mm / 25.4;
 
   // Only surface the HWO while it's current (offices issue them daily).
   const freshOutlook =
@@ -123,6 +147,13 @@ export function NowScreen({
         </div>
       </motion.section>
 
+      {/* ---- Active tropical cyclone nearby ---- */}
+      {storms.data && storms.data.length > 0 && (
+        <motion.div {...fade} transition={{ duration: 0.5, delay: 0.03 }}>
+          <TropicalBanner storms={storms.data} />
+        </motion.div>
+      )}
+
       {/* ---- Hazardous Weather Outlook ---- */}
       {freshOutlook && (
         <motion.button
@@ -168,10 +199,58 @@ export function NowScreen({
         </motion.div>
       )}
 
+      {/* ---- Upcoming precip totals (next 24h) ---- */}
+      {accum && (accum.rainMm >= 0.3 || accum.snowMm >= 1) && (
+        <motion.div className="accum-pills" {...fade} transition={{ duration: 0.5, delay: 0.09 }}>
+          {accum.rainMm >= 0.3 && (
+            <div className="accum-pill">
+              <span className="accum-icon">💧</span>
+              <div>
+                <div className="accum-val tabular">
+                  {imperialDistance ? `${inches(accum.rainMm).toFixed(2)} in` : `${accum.rainMm.toFixed(1)} mm`}
+                </div>
+                <div className="accum-cap">Rain · next 24h</div>
+              </div>
+            </div>
+          )}
+          {accum.snowMm >= 1 && (
+            <div className="accum-pill">
+              <span className="accum-icon">❄️</span>
+              <div>
+                <div className="accum-val tabular">
+                  {imperialDistance ? `${inches(accum.snowMm).toFixed(1)} in` : `${accum.snowMm.toFixed(0)} mm`}
+                </div>
+                <div className="accum-cap">Snow · next 24h</div>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* ---- Multi-day forecast ---- */}
       {forecast.data && forecast.data.length > 0 && (
         <motion.div {...fade} transition={{ duration: 0.5, delay: 0.1 }}>
           <DailyForecastCard periods={forecast.data} accent={sky.theme.accent} days={5} onSeeAll={onSeeDaily} />
+        </motion.div>
+      )}
+
+      {/* ---- Air & Sun (AQI · UV · sun/moon) ---- */}
+      {coords && (air.data || uv.data) && (
+        <motion.div {...fade} transition={{ duration: 0.5, delay: 0.11 }}>
+          <AirSunCard
+            air={air.data}
+            uv={uv.data}
+            lat={coords.lat}
+            lon={coords.lon}
+            timeZone={meta?.timeZone}
+          />
+        </motion.div>
+      )}
+
+      {/* ---- Tides (coastal only) ---- */}
+      {tides.data && (
+        <motion.div {...fade} transition={{ duration: 0.5, delay: 0.12 }}>
+          <TidesCard tides={tides.data} timeZone={meta?.timeZone} />
         </motion.div>
       )}
 
