@@ -1544,7 +1544,9 @@
    Desktop dashboard — single full-viewport layout (>=1024px).
    Collapses to the tabbed mobile layout below the breakpoint.
    ============================================================ */
-.app-wide {
+/* Higher specificity (.app.app-wide) to beat `.app { max-width: 520px }`
+   from index.css regardless of stylesheet order. */
+.app.app-wide {
   max-width: none;
 }
 
@@ -1645,4 +1647,56 @@
 }
 .dash-fcst .obs-credit {
   margin-top: 2px;
+}
+
+/* TopBar actions group (refresh + settings on desktop). */
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Settings modal (desktop dashboard's entry point to More). */
+.more-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(4, 7, 14, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.more-panel {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  max-height: 86vh;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: #0c1120;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+.more-panel .scroll {
+  position: relative;
+  inset: auto;
+  max-height: 86vh;
+  padding-bottom: 24px;
+}
+.more-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--fg);
 }

@@ -32,6 +32,7 @@ export default function App() {
 
   const [tab, setTab] = useState<TabId>("now");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   // Wide screens get a single full-viewport dashboard; narrow screens keep the
   // tabbed, scrolling mobile layout.
   const isWide = useMediaQuery("(min-width: 1024px)");
@@ -107,6 +108,7 @@ export default function App() {
             onOpenLocations={() => setSheetOpen(true)}
             onRefresh={() => queryClient.invalidateQueries()}
             refreshing={currentQ.isFetching || metaQ.isFetching}
+            onOpenMore={wideDash ? () => setMoreOpen(true) : undefined}
           />
 
           {alertsQ.data && alertsQ.data.length > 0 && (
@@ -145,6 +147,19 @@ export default function App() {
       )}
 
       <LocationSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
+
+      {moreOpen && (
+        <div className="more-modal" onClick={() => setMoreOpen(false)}>
+          <div className="more-panel" onClick={(e) => e.stopPropagation()}>
+            <button className="more-close" onClick={() => setMoreOpen(false)} aria-label="Close settings">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
+              </svg>
+            </button>
+            <MoreScreen accent={sky.theme.accent} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
