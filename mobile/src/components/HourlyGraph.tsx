@@ -102,16 +102,40 @@ export function HourlyGraph({
 
   const width = PAD_L + hours.length * PX + PAD_R;
 
-  const { yMin, yMax } = useMemo(() => {
-    let lo = 0;
-    let hi = 100;
+  // Per-family vertical scales so each reads on its own range. Temperature
+  // (with feels/dew) auto-fits the day's actual min→max — this is what makes
+  // the daily high AND low clearly visible instead of squished near the top of
+  // a fixed 0–100 axis. The left axis is labeled in degrees (the headline
+  // series); % series (humidity/precip/cloud) and wind keep their own scaling.
+  const tempRange = useMemo(() => {
+    const vals: number[] = [];
     for (const d of data) {
-      lo = Math.min(lo, d.tempF - 5);
-      hi = Math.max(hi, d.tempF + 5);
+      if (!hidden.has("temp") && d.tempF != null) vals.push(d.tempF);
+      if (!hidden.has("feels") && d.feelsF != null) vals.push(d.feelsF);
+      if (!hidden.has("dew") && d.dewF != null) vals.push(d.dewF);
     }
-    return { yMin: lo, yMax: hi };
+    if (!vals.length) return { lo: 0, hi: 100 };
+    const lo = Math.min(...vals);
+    const hi = Math.max(...vals);
+    const pad = Math.max(4, (hi - lo) * 0.18);
+    return { lo: lo - pad, hi: hi + pad };
+  }, [data, hidden]);
+
+  const windMax = useMemo(() => {
+    let m = 1;
+    for (const d of data) m = Math.max(m, d.windMph ?? 0, d.gustMph ?? 0);
+    return m * 1.1;
   }, [data]);
-  const y = (v: number) => PLOT_TOP + (1 - (v - yMin) / (yMax - yMin)) * PLOT_H;
+
+  const tempTicks = useMemo(() => {
+    const { lo, hi } = tempRange;
+    return [0, 1, 2, 3, 4].map((i) => Math.round(lo + ((hi - lo) * i) / 4));
+  }, [tempRange]);
+
+  const yTemp = (v: number) =>
+    PLOT_TOP + (1 - (v - tempRange.lo) / (tempRange.hi - tempRange.lo)) * PLOT_H;
+  const yPct = (v: number) => PLOT_TOP + (1 - v / 100) * PLOT_H;
+  const yWind = (v: number) => PLOT_TOP + (1 - v / windMax) * PLOT_H;
 
   const nights = useMemo(() => {
     const bands: { x0: number; x1: number }[] = [];
@@ -174,9 +198,9 @@ export function HourlyGraph({
       <View>
         {/* Pinned y-axis */}
         <View style={s.axisPin} pointerEvents="none">
-          {[100, 75, 50, 25, 0].map((g) => (
-            <Text key={g} style={[s.axisLabel, { top: y(g) - 16 }]}>
-              {g}
+          {tempTicks.map((t) => (
+            <Text key={t} style={[s.axisLabel, { top: yTemp(t) - 8 }]}>
+              {displayTempF(t, temp)}°
             </Text>
           ))}
           <Text style={[s.axisLabel, { top: SVG_H + 2 }]}>
@@ -196,8 +220,8 @@ export function HourlyGraph({
               {nights.map((n, i) => (
                 <Rect key={i} x={n.x0} y={PLOT_TOP - 6} width={n.x1 - n.x0} height={PLOT_H + 12} fill="rgba(2,6,18,0.35)" rx={6} />
               ))}
-              {[0, 25, 50, 75, 100].map((g) => (
-                <Line key={g} x1={PAD_L} x2={width - PAD_R} y1={y(g)} y2={y(g)} stroke="rgba(255,255,255,0.08)" />
+              {tempTicks.map((t) => (
+                <Line key={t} x1={PAD_L} x2={width - PAD_R} y1={yTemp(t)} y2={yTemp(t)} stroke="rgba(255,255,255,0.08)" />
               ))}
               {dayMarks.map((m) => (
                 <G key={m.x}>
@@ -219,41 +243,41 @@ export function HourlyGraph({
                   );
                 })}
               {show("cloud") &&
-                segments(data.map((d) => ({ x: d.x, v: d.cloud })), y).map((p, i) => (
+                segments(data.map((d) => ({ x: d.x, v: d.cloud })), yPct).map((p, i) => (
                   <Path key={`c${i}`} d={p} fill="none" stroke={SERIES.cloud.color} strokeWidth={1.6} opacity={0.75} />
                 ))}
               {show("pop") &&
-                segments(data.map((d) => ({ x: d.x, v: d.pop })), y).map((p, i) => (
+                segments(data.map((d) => ({ x: d.x, v: d.pop })), yPct).map((p, i) => (
                   <Path key={`p${i}`} d={p} fill="none" stroke={SERIES.pop.color} strokeWidth={2} />
                 ))}
               {show("humidity") &&
-                segments(data.map((d) => ({ x: d.x, v: d.humidity })), y).map((p, i) => (
+                segments(data.map((d) => ({ x: d.x, v: d.humidity })), yPct).map((p, i) => (
                   <Path key={`h${i}`} d={p} fill="none" stroke={SERIES.humidity.color} strokeWidth={2} />
                 ))}
               {show("wind") &&
-                segments(data.map((d) => ({ x: d.x, v: d.windMph })), y).map((p, i) => (
+                segments(data.map((d) => ({ x: d.x, v: d.windMph })), yWind).map((p, i) => (
                   <Path key={`w${i}`} d={p} fill="none" stroke={SERIES.wind.color} strokeWidth={2} />
                 ))}
               {show("gust") &&
-                segments(data.map((d) => ({ x: d.x, v: d.gustMph })), y).map((p, i) => (
+                segments(data.map((d) => ({ x: d.x, v: d.gustMph })), yWind).map((p, i) => (
                   <Path key={`g${i}`} d={p} fill="none" stroke={SERIES.gust.color} strokeWidth={1.8} strokeDasharray="4 3" />
                 ))}
               {show("dew") &&
-                segments(data.map((d) => ({ x: d.x, v: d.dewF })), y).map((p, i) => (
+                segments(data.map((d) => ({ x: d.x, v: d.dewF })), yTemp).map((p, i) => (
                   <Path key={`d${i}`} d={p} fill="none" stroke={SERIES.dew.color} strokeWidth={2} />
                 ))}
               {show("feels") &&
-                segments(data.map((d) => ({ x: d.x, v: d.feelsF })), y).map((p, i) => (
+                segments(data.map((d) => ({ x: d.x, v: d.feelsF })), yTemp).map((p, i) => (
                   <Path key={`f${i}`} d={p} fill="none" stroke={SERIES.feels.color} strokeWidth={2} strokeDasharray="6 4" />
                 ))}
               {show("temp") &&
-                segments(data.map((d) => ({ x: d.x, v: d.tempF })), y).map((p, i) => (
+                segments(data.map((d) => ({ x: d.x, v: d.tempF })), yTemp).map((p, i) => (
                   <Path key={`t${i}`} d={p} fill="none" stroke={SERIES.temp.color} strokeWidth={2.6} />
                 ))}
               {show("temp") &&
                 data.map((d, i) =>
                   i % 3 === 0 ? (
-                    <SvgText key={`tl${i}`} x={d.x} y={y(d.tempF) - 8} fill={SERIES.temp.color} fontSize={10.5} fontWeight="bold" textAnchor="middle">
+                    <SvgText key={`tl${i}`} x={d.x} y={yTemp(d.tempF) - 8} fill={SERIES.temp.color} fontSize={10.5} fontWeight="bold" textAnchor="middle">
                       {displayTempF(d.tempF, temp)}°
                     </SvgText>
                   ) : null,

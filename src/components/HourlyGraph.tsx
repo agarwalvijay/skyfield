@@ -107,21 +107,40 @@ export function HourlyGraph({
 
   const width = PAD_L + hours.length * PX + PAD_R;
 
-  // One shared y-scale: % series live on 0-100; temp (°F) and wind (mph)
-  // usually fit the same span, so extend the domain if they don't.
-  const { yMin, yMax } = useMemo(() => {
-    let lo = 0;
-    let hi = 100;
+  // Per-family vertical scales so each series reads on its own range.
+  // Temperature (with feels/dew) auto-fits the day's actual min→max, so the
+  // daily high AND low are clearly visible instead of squished near the top of
+  // a fixed 0–100 axis. The left axis is labeled in degrees (the headline
+  // series); % series (humidity/precip/cloud) and wind keep their own scaling.
+  const tempRange = useMemo(() => {
+    const vals: number[] = [];
     for (const d of data) {
-      if (d.tempF != null) {
-        lo = Math.min(lo, d.tempF - 5);
-        hi = Math.max(hi, d.tempF + 5);
-      }
+      if (!hidden.has("temp") && d.tempF != null) vals.push(d.tempF);
+      if (!hidden.has("feels") && d.feelsF != null) vals.push(d.feelsF);
+      if (!hidden.has("dew") && d.dewF != null) vals.push(d.dewF);
     }
-    return { yMin: lo, yMax: hi };
+    if (!vals.length) return { lo: 0, hi: 100 };
+    const lo = Math.min(...vals);
+    const hi = Math.max(...vals);
+    const pad = Math.max(4, (hi - lo) * 0.18);
+    return { lo: lo - pad, hi: hi + pad };
+  }, [data, hidden]);
+
+  const windMax = useMemo(() => {
+    let m = 1;
+    for (const d of data) m = Math.max(m, d.windMph ?? 0, d.gustMph ?? 0);
+    return m * 1.1;
   }, [data]);
 
-  const y = (v: number) => PLOT_TOP + (1 - (v - yMin) / (yMax - yMin)) * PLOT_H;
+  const tempTicks = useMemo(() => {
+    const { lo, hi } = tempRange;
+    return [0, 1, 2, 3, 4].map((i) => Math.round(lo + ((hi - lo) * i) / 4));
+  }, [tempRange]);
+
+  const yTemp = (v: number) =>
+    PLOT_TOP + (1 - (v - tempRange.lo) / (tempRange.hi - tempRange.lo)) * PLOT_H;
+  const yPct = (v: number) => PLOT_TOP + (1 - v / 100) * PLOT_H;
+  const yWind = (v: number) => PLOT_TOP + (1 - v / windMax) * PLOT_H;
 
   // Night shading bands.
   const nights = useMemo(() => {
@@ -209,9 +228,9 @@ export function HourlyGraph({
       <div className="hgraph-plot">
         {/* Y-axis labels pinned outside the scroll area. */}
         <div className="hg-axis-pin" aria-hidden="true">
-          {[100, 75, 50, 25, 0].map((g) => (
-            <span key={g} style={{ top: y(g) }}>
-              {g}
+          {tempTicks.map((t) => (
+            <span key={t} style={{ top: yTemp(t) }}>
+              {displayTempF(t, temp)}°
             </span>
           ))}
           <span style={{ top: SVG_H + 14 }}>
@@ -241,14 +260,14 @@ export function HourlyGraph({
               />
             ))}
 
-            {/* Gridlines at 0/25/50/75/100 */}
-            {[0, 25, 50, 75, 100].map((g) => (
+            {/* Gridlines at the temperature ticks. */}
+            {tempTicks.map((t) => (
               <line
-                key={g}
+                key={t}
                 x1={PAD_L}
                 x2={width - PAD_R}
-                y1={y(g)}
-                y2={y(g)}
+                y1={yTemp(t)}
+                y2={yTemp(t)}
                 stroke="rgba(255,255,255,0.08)"
               />
             ))}
@@ -293,35 +312,35 @@ export function HourlyGraph({
             {/* Series lines */}
             {show("cloud") &&
               grid &&
-              segments(data.map((d) => ({ x: d.x, v: d.cloud })), y).map((p, i) => (
+              segments(data.map((d) => ({ x: d.x, v: d.cloud })), yPct).map((p, i) => (
                 <path key={`c${i}`} d={p} fill="none" stroke={SERIES.cloud.color} strokeWidth="1.6" opacity="0.75" />
               ))}
             {show("pop") &&
-              segments(data.map((d) => ({ x: d.x, v: d.pop })), y).map((p, i) => (
+              segments(data.map((d) => ({ x: d.x, v: d.pop })), yPct).map((p, i) => (
                 <path key={`p${i}`} d={p} fill="none" stroke={SERIES.pop.color} strokeWidth="2" />
               ))}
             {show("humidity") &&
-              segments(data.map((d) => ({ x: d.x, v: d.humidity })), y).map((p, i) => (
+              segments(data.map((d) => ({ x: d.x, v: d.humidity })), yPct).map((p, i) => (
                 <path key={`h${i}`} d={p} fill="none" stroke={SERIES.humidity.color} strokeWidth="2" />
               ))}
             {show("wind") &&
-              segments(data.map((d) => ({ x: d.x, v: d.windMph })), y).map((p, i) => (
+              segments(data.map((d) => ({ x: d.x, v: d.windMph })), yWind).map((p, i) => (
                 <path key={`w${i}`} d={p} fill="none" stroke={SERIES.wind.color} strokeWidth="2" />
               ))}
             {show("gust") &&
-              segments(data.map((d) => ({ x: d.x, v: d.gustMph })), y).map((p, i) => (
+              segments(data.map((d) => ({ x: d.x, v: d.gustMph })), yWind).map((p, i) => (
                 <path key={`g${i}`} d={p} fill="none" stroke={SERIES.gust.color} strokeWidth="1.8" strokeDasharray="4 3" />
               ))}
             {show("dew") &&
-              segments(data.map((d) => ({ x: d.x, v: d.dewF })), y).map((p, i) => (
+              segments(data.map((d) => ({ x: d.x, v: d.dewF })), yTemp).map((p, i) => (
                 <path key={`d${i}`} d={p} fill="none" stroke={SERIES.dew.color} strokeWidth="2" />
               ))}
             {show("feels") &&
-              segments(data.map((d) => ({ x: d.x, v: d.feelsF })), y).map((p, i) => (
+              segments(data.map((d) => ({ x: d.x, v: d.feelsF })), yTemp).map((p, i) => (
                 <path key={`f${i}`} d={p} fill="none" stroke={SERIES.feels.color} strokeWidth="2" strokeDasharray="6 4" />
               ))}
             {show("temp") &&
-              segments(data.map((d) => ({ x: d.x, v: d.tempF })), y).map((p, i) => (
+              segments(data.map((d) => ({ x: d.x, v: d.tempF })), yTemp).map((p, i) => (
                 <path key={`t${i}`} d={p} fill="none" stroke={SERIES.temp.color} strokeWidth="2.6" />
               ))}
 
@@ -329,7 +348,7 @@ export function HourlyGraph({
             {show("temp") &&
               data.map((d, i) =>
                 i % 3 === 0 && d.tempF != null ? (
-                  <text key={`tl${i}`} x={d.x} y={y(d.tempF) - 8} className="hg-val" fill={SERIES.temp.color}>
+                  <text key={`tl${i}`} x={d.x} y={yTemp(d.tempF) - 8} className="hg-val" fill={SERIES.temp.color}>
                     {displayTempF(d.tempF, temp)}°
                   </text>
                 ) : null,
