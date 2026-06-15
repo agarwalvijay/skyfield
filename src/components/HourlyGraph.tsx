@@ -142,6 +142,34 @@ export function HourlyGraph({
   const yPct = (v: number) => PLOT_TOP + (1 - v / 100) * PLOT_H;
   const yWind = (v: number) => PLOT_TOP + (1 - v / windMax) * PLOT_H;
 
+  // Per-day high & low temperature points, marked directly on the curve.
+  const extrema = useMemo(() => {
+    if (hidden.has("temp")) return [] as { x: number; v: number; kind: "high" | "low" }[];
+    const byDay = new Map<string, { hiI: number; hiV: number; loI: number; loV: number }>();
+    data.forEach((d, i) => {
+      if (d.tempF == null) return;
+      const k = dayShort(d.time, timeZone);
+      const e = byDay.get(k);
+      if (!e) byDay.set(k, { hiI: i, hiV: d.tempF, loI: i, loV: d.tempF });
+      else {
+        if (d.tempF > e.hiV) {
+          e.hiV = d.tempF;
+          e.hiI = i;
+        }
+        if (d.tempF < e.loV) {
+          e.loV = d.tempF;
+          e.loI = i;
+        }
+      }
+    });
+    const out: { x: number; v: number; kind: "high" | "low" }[] = [];
+    for (const e of byDay.values()) {
+      out.push({ x: data[e.hiI].x, v: e.hiV, kind: "high" });
+      if (e.loI !== e.hiI) out.push({ x: data[e.loI].x, v: e.loV, kind: "low" });
+    }
+    return out;
+  }, [data, hidden, timeZone]);
+
   // Night shading bands.
   const nights = useMemo(() => {
     const bands: { x0: number; x1: number }[] = [];
@@ -344,15 +372,26 @@ export function HourlyGraph({
                 <path key={`t${i}`} d={p} fill="none" stroke={SERIES.temp.color} strokeWidth="2.6" />
               ))}
 
-            {/* Temp value labels every 3h */}
+            {/* Per-day high / low markers */}
             {show("temp") &&
-              data.map((d, i) =>
-                i % 3 === 0 && d.tempF != null ? (
-                  <text key={`tl${i}`} x={d.x} y={yTemp(d.tempF) - 8} className="hg-val" fill={SERIES.temp.color}>
-                    {displayTempF(d.tempF, temp)}°
-                  </text>
-                ) : null,
-              )}
+              extrema.map((e, k) => {
+                const color = e.kind === "high" ? SERIES.temp.color : "#8ec5ff";
+                return (
+                  <g key={`ex${k}`}>
+                    <circle cx={e.x} cy={yTemp(e.v)} r={3.4} fill={color} />
+                    <text
+                      x={e.x}
+                      y={e.kind === "high" ? yTemp(e.v) - 9 : yTemp(e.v) + 17}
+                      className="hg-val"
+                      fill={color}
+                      textAnchor="middle"
+                    >
+                      {e.kind === "high" ? "↑" : "↓"}
+                      {displayTempF(e.v, temp)}°
+                    </text>
+                  </g>
+                );
+              })}
 
             {/* Hour labels */}
             {data.map((d, i) =>

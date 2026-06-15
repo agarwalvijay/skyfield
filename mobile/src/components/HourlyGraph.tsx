@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Svg, { G, Line, Path, Rect, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from "react-native-svg";
 import type { Coordinates, GridSeries, HourlyPeriod } from "@/lib/nws";
 import { useSettings } from "@/store/settings";
 import {
@@ -136,6 +136,35 @@ export function HourlyGraph({
     PLOT_TOP + (1 - (v - tempRange.lo) / (tempRange.hi - tempRange.lo)) * PLOT_H;
   const yPct = (v: number) => PLOT_TOP + (1 - v / 100) * PLOT_H;
   const yWind = (v: number) => PLOT_TOP + (1 - v / windMax) * PLOT_H;
+
+  // Per-day high & low temperature points, to mark the daily peaks/troughs
+  // directly on the curve.
+  const extrema = useMemo(() => {
+    if (hidden.has("temp")) return [] as { x: number; v: number; kind: "high" | "low" }[];
+    const byDay = new Map<string, { hiI: number; hiV: number; loI: number; loV: number }>();
+    data.forEach((d, i) => {
+      if (d.tempF == null) return;
+      const k = dayShort(d.time, timeZone);
+      const e = byDay.get(k);
+      if (!e) byDay.set(k, { hiI: i, hiV: d.tempF, loI: i, loV: d.tempF });
+      else {
+        if (d.tempF > e.hiV) {
+          e.hiV = d.tempF;
+          e.hiI = i;
+        }
+        if (d.tempF < e.loV) {
+          e.loV = d.tempF;
+          e.loI = i;
+        }
+      }
+    });
+    const out: { x: number; v: number; kind: "high" | "low" }[] = [];
+    for (const e of byDay.values()) {
+      out.push({ x: data[e.hiI].x, v: e.hiV, kind: "high" });
+      if (e.loI !== e.hiI) out.push({ x: data[e.loI].x, v: e.loV, kind: "low" });
+    }
+    return out;
+  }, [data, hidden, timeZone]);
 
   const nights = useMemo(() => {
     const bands: { x0: number; x1: number }[] = [];
@@ -275,13 +304,25 @@ export function HourlyGraph({
                   <Path key={`t${i}`} d={p} fill="none" stroke={SERIES.temp.color} strokeWidth={2.6} />
                 ))}
               {show("temp") &&
-                data.map((d, i) =>
-                  i % 3 === 0 ? (
-                    <SvgText key={`tl${i}`} x={d.x} y={yTemp(d.tempF) - 8} fill={SERIES.temp.color} fontSize={10.5} fontWeight="bold" textAnchor="middle">
-                      {displayTempF(d.tempF, temp)}°
-                    </SvgText>
-                  ) : null,
-                )}
+                extrema.map((e, k) => {
+                  const color = e.kind === "high" ? SERIES.temp.color : "#8ec5ff";
+                  return (
+                    <G key={`ex${k}`}>
+                      <Circle cx={e.x} cy={yTemp(e.v)} r={3.4} fill={color} />
+                      <SvgText
+                        x={e.x}
+                        y={e.kind === "high" ? yTemp(e.v) - 9 : yTemp(e.v) + 17}
+                        fill={color}
+                        fontSize={11}
+                        fontWeight="bold"
+                        textAnchor="middle"
+                      >
+                        {e.kind === "high" ? "↑" : "↓"}
+                        {displayTempF(e.v, temp)}°
+                      </SvgText>
+                    </G>
+                  );
+                })}
               {data.map((d, i) =>
                 i % 3 === 0 ? (
                   <SvgText key={`x${i}`} x={d.x} y={HOUR_Y} fill="rgba(243,246,252,0.45)" fontSize={10} textAnchor="middle">
