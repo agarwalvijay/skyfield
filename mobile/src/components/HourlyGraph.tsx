@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from "react-native-svg";
+import Svg, { G, Line, Path, Rect, Text as SvgText } from "react-native-svg";
 import type { Coordinates, GridSeries, HourlyPeriod } from "@/lib/nws";
 import { useSettings } from "@/store/settings";
 import {
@@ -102,11 +102,10 @@ export function HourlyGraph({
 
   const width = PAD_L + hours.length * PX + PAD_R;
 
-  // Per-family vertical scales so each reads on its own range. Temperature
-  // (with feels/dew) auto-fits the day's actual min→max — this is what makes
-  // the daily high AND low clearly visible instead of squished near the top of
-  // a fixed 0–100 axis. The left axis is labeled in degrees (the headline
-  // series); % series (humidity/precip/cloud) and wind keep their own scaling.
+  // Two y-scales. LEFT axis = temperature (with feels/dew), auto-fit to the
+  // day's actual min→max so the daily high AND low are clear instead of
+  // squished near the top of a fixed 0–100 axis. RIGHT axis = 0–100, shared by
+  // the % series (humidity/precip/cloud) and wind (mph reads on the same scale).
   const tempRange = useMemo(() => {
     const vals: number[] = [];
     for (const d of data) {
@@ -121,12 +120,6 @@ export function HourlyGraph({
     return { lo: lo - pad, hi: hi + pad };
   }, [data, hidden]);
 
-  const windMax = useMemo(() => {
-    let m = 1;
-    for (const d of data) m = Math.max(m, d.windMph ?? 0, d.gustMph ?? 0);
-    return m * 1.1;
-  }, [data]);
-
   const tempTicks = useMemo(() => {
     const { lo, hi } = tempRange;
     return [0, 1, 2, 3, 4].map((i) => Math.round(lo + ((hi - lo) * i) / 4));
@@ -135,36 +128,6 @@ export function HourlyGraph({
   const yTemp = (v: number) =>
     PLOT_TOP + (1 - (v - tempRange.lo) / (tempRange.hi - tempRange.lo)) * PLOT_H;
   const yPct = (v: number) => PLOT_TOP + (1 - v / 100) * PLOT_H;
-  const yWind = (v: number) => PLOT_TOP + (1 - v / windMax) * PLOT_H;
-
-  // Per-day high & low temperature points, to mark the daily peaks/troughs
-  // directly on the curve.
-  const extrema = useMemo(() => {
-    if (hidden.has("temp")) return [] as { x: number; v: number; kind: "high" | "low" }[];
-    const byDay = new Map<string, { hiI: number; hiV: number; loI: number; loV: number }>();
-    data.forEach((d, i) => {
-      if (d.tempF == null) return;
-      const k = dayShort(d.time, timeZone);
-      const e = byDay.get(k);
-      if (!e) byDay.set(k, { hiI: i, hiV: d.tempF, loI: i, loV: d.tempF });
-      else {
-        if (d.tempF > e.hiV) {
-          e.hiV = d.tempF;
-          e.hiI = i;
-        }
-        if (d.tempF < e.loV) {
-          e.loV = d.tempF;
-          e.loI = i;
-        }
-      }
-    });
-    const out: { x: number; v: number; kind: "high" | "low" }[] = [];
-    for (const e of byDay.values()) {
-      out.push({ x: data[e.hiI].x, v: e.hiV, kind: "high" });
-      if (e.loI !== e.hiI) out.push({ x: data[e.loI].x, v: e.loV, kind: "low" });
-    }
-    return out;
-  }, [data, hidden, timeZone]);
 
   const nights = useMemo(() => {
     const bands: { x0: number; x1: number }[] = [];
@@ -237,6 +200,18 @@ export function HourlyGraph({
           </Text>
         </View>
 
+        {/* Right axis: 0–100 for the % series + wind. */}
+        <View style={[s.axisPin, s.axisPinRight]} pointerEvents="none">
+          {[100, 75, 50, 25, 0].map((g) => (
+            <Text key={g} style={[s.axisLabel, s.axisLabelRight, { top: yPct(g) - 8 }]}>
+              {g}
+            </Text>
+          ))}
+          <Text style={[s.axisLabel, s.axisLabelRight, { top: SVG_H + 2 }]}>
+            % · {windUnitLabel(wind)}
+          </Text>
+        </View>
+
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <Pressable
             onPress={(e) => {
@@ -284,11 +259,11 @@ export function HourlyGraph({
                   <Path key={`h${i}`} d={p} fill="none" stroke={SERIES.humidity.color} strokeWidth={2} />
                 ))}
               {show("wind") &&
-                segments(data.map((d) => ({ x: d.x, v: d.windMph })), yWind).map((p, i) => (
+                segments(data.map((d) => ({ x: d.x, v: d.windMph })), yPct).map((p, i) => (
                   <Path key={`w${i}`} d={p} fill="none" stroke={SERIES.wind.color} strokeWidth={2} />
                 ))}
               {show("gust") &&
-                segments(data.map((d) => ({ x: d.x, v: d.gustMph })), yWind).map((p, i) => (
+                segments(data.map((d) => ({ x: d.x, v: d.gustMph })), yPct).map((p, i) => (
                   <Path key={`g${i}`} d={p} fill="none" stroke={SERIES.gust.color} strokeWidth={1.8} strokeDasharray="4 3" />
                 ))}
               {show("dew") &&
@@ -304,25 +279,13 @@ export function HourlyGraph({
                   <Path key={`t${i}`} d={p} fill="none" stroke={SERIES.temp.color} strokeWidth={2.6} />
                 ))}
               {show("temp") &&
-                extrema.map((e, k) => {
-                  const color = e.kind === "high" ? SERIES.temp.color : "#8ec5ff";
-                  return (
-                    <G key={`ex${k}`}>
-                      <Circle cx={e.x} cy={yTemp(e.v)} r={3.4} fill={color} />
-                      <SvgText
-                        x={e.x}
-                        y={e.kind === "high" ? yTemp(e.v) - 9 : yTemp(e.v) + 17}
-                        fill={color}
-                        fontSize={11}
-                        fontWeight="bold"
-                        textAnchor="middle"
-                      >
-                        {e.kind === "high" ? "↑" : "↓"}
-                        {displayTempF(e.v, temp)}°
-                      </SvgText>
-                    </G>
-                  );
-                })}
+                data.map((d, i) =>
+                  i % 3 === 0 ? (
+                    <SvgText key={`tl${i}`} x={d.x} y={yTemp(d.tempF) - 8} fill={SERIES.temp.color} fontSize={10.5} fontWeight="bold" textAnchor="middle">
+                      {displayTempF(d.tempF, temp)}°
+                    </SvgText>
+                  ) : null,
+                )}
               {data.map((d, i) =>
                 i % 3 === 0 ? (
                   <SvgText key={`x${i}`} x={d.x} y={HOUR_Y} fill="rgba(243,246,252,0.45)" fontSize={10} textAnchor="middle">
@@ -413,6 +376,7 @@ const s = StyleSheet.create({
   chipDot: { width: 9, height: 9, borderRadius: 3 },
   chipText: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: colors.fgDim },
   axisPin: { position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 4 },
+  axisPinRight: { left: undefined, right: 0 },
   axisLabel: {
     position: "absolute",
     left: 4,
@@ -425,6 +389,7 @@ const s = StyleSheet.create({
     borderRadius: 5,
     overflow: "hidden",
   },
+  axisLabelRight: { left: undefined, right: 4 },
   tip: { paddingHorizontal: 14, paddingTop: 10 },
   tipTime: { fontFamily: fonts.bodyExtra, fontSize: 13, color: colors.fg, marginBottom: 6 },
   tipRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },

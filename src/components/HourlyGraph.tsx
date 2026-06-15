@@ -107,11 +107,10 @@ export function HourlyGraph({
 
   const width = PAD_L + hours.length * PX + PAD_R;
 
-  // Per-family vertical scales so each series reads on its own range.
-  // Temperature (with feels/dew) auto-fits the day's actual min→max, so the
-  // daily high AND low are clearly visible instead of squished near the top of
-  // a fixed 0–100 axis. The left axis is labeled in degrees (the headline
-  // series); % series (humidity/precip/cloud) and wind keep their own scaling.
+  // Two y-scales. LEFT axis = temperature (with feels/dew), auto-fit to the
+  // day's actual min→max so the daily high AND low are clear instead of
+  // squished near the top of a fixed 0–100 axis. RIGHT axis = 0–100, shared by
+  // the % series (humidity/precip/cloud) and wind (mph reads on the same scale).
   const tempRange = useMemo(() => {
     const vals: number[] = [];
     for (const d of data) {
@@ -126,12 +125,6 @@ export function HourlyGraph({
     return { lo: lo - pad, hi: hi + pad };
   }, [data, hidden]);
 
-  const windMax = useMemo(() => {
-    let m = 1;
-    for (const d of data) m = Math.max(m, d.windMph ?? 0, d.gustMph ?? 0);
-    return m * 1.1;
-  }, [data]);
-
   const tempTicks = useMemo(() => {
     const { lo, hi } = tempRange;
     return [0, 1, 2, 3, 4].map((i) => Math.round(lo + ((hi - lo) * i) / 4));
@@ -139,36 +132,8 @@ export function HourlyGraph({
 
   const yTemp = (v: number) =>
     PLOT_TOP + (1 - (v - tempRange.lo) / (tempRange.hi - tempRange.lo)) * PLOT_H;
+  // % series (humidity, precip prob, cloud) and wind share a 0–100 right axis.
   const yPct = (v: number) => PLOT_TOP + (1 - v / 100) * PLOT_H;
-  const yWind = (v: number) => PLOT_TOP + (1 - v / windMax) * PLOT_H;
-
-  // Per-day high & low temperature points, marked directly on the curve.
-  const extrema = useMemo(() => {
-    if (hidden.has("temp")) return [] as { x: number; v: number; kind: "high" | "low" }[];
-    const byDay = new Map<string, { hiI: number; hiV: number; loI: number; loV: number }>();
-    data.forEach((d, i) => {
-      if (d.tempF == null) return;
-      const k = dayShort(d.time, timeZone);
-      const e = byDay.get(k);
-      if (!e) byDay.set(k, { hiI: i, hiV: d.tempF, loI: i, loV: d.tempF });
-      else {
-        if (d.tempF > e.hiV) {
-          e.hiV = d.tempF;
-          e.hiI = i;
-        }
-        if (d.tempF < e.loV) {
-          e.loV = d.tempF;
-          e.loI = i;
-        }
-      }
-    });
-    const out: { x: number; v: number; kind: "high" | "low" }[] = [];
-    for (const e of byDay.values()) {
-      out.push({ x: data[e.hiI].x, v: e.hiV, kind: "high" });
-      if (e.loI !== e.hiI) out.push({ x: data[e.loI].x, v: e.loV, kind: "low" });
-    }
-    return out;
-  }, [data, hidden, timeZone]);
 
   // Night shading bands.
   const nights = useMemo(() => {
@@ -266,6 +231,16 @@ export function HourlyGraph({
           </span>
         </div>
 
+        {/* Right axis: 0–100 for the % series (humidity / precip% / cloud) + wind. */}
+        <div className="hg-axis-pin hg-axis-pin-right" aria-hidden="true">
+          {[100, 75, 50, 25, 0].map((g) => (
+            <span key={g} style={{ top: yPct(g) }}>
+              {g}
+            </span>
+          ))}
+          <span style={{ top: SVG_H + 14 }}>% · {windUnitLabel(wind)}</span>
+        </div>
+
         <div
           className="hgraph-scroll"
           onPointerDown={onPointer}
@@ -352,11 +327,11 @@ export function HourlyGraph({
                 <path key={`h${i}`} d={p} fill="none" stroke={SERIES.humidity.color} strokeWidth="2" />
               ))}
             {show("wind") &&
-              segments(data.map((d) => ({ x: d.x, v: d.windMph })), yWind).map((p, i) => (
+              segments(data.map((d) => ({ x: d.x, v: d.windMph })), yPct).map((p, i) => (
                 <path key={`w${i}`} d={p} fill="none" stroke={SERIES.wind.color} strokeWidth="2" />
               ))}
             {show("gust") &&
-              segments(data.map((d) => ({ x: d.x, v: d.gustMph })), yWind).map((p, i) => (
+              segments(data.map((d) => ({ x: d.x, v: d.gustMph })), yPct).map((p, i) => (
                 <path key={`g${i}`} d={p} fill="none" stroke={SERIES.gust.color} strokeWidth="1.8" strokeDasharray="4 3" />
               ))}
             {show("dew") &&
@@ -372,26 +347,15 @@ export function HourlyGraph({
                 <path key={`t${i}`} d={p} fill="none" stroke={SERIES.temp.color} strokeWidth="2.6" />
               ))}
 
-            {/* Per-day high / low markers */}
+            {/* Temp value labels every 3h */}
             {show("temp") &&
-              extrema.map((e, k) => {
-                const color = e.kind === "high" ? SERIES.temp.color : "#8ec5ff";
-                return (
-                  <g key={`ex${k}`}>
-                    <circle cx={e.x} cy={yTemp(e.v)} r={3.4} fill={color} />
-                    <text
-                      x={e.x}
-                      y={e.kind === "high" ? yTemp(e.v) - 9 : yTemp(e.v) + 17}
-                      className="hg-val"
-                      fill={color}
-                      textAnchor="middle"
-                    >
-                      {e.kind === "high" ? "↑" : "↓"}
-                      {displayTempF(e.v, temp)}°
-                    </text>
-                  </g>
-                );
-              })}
+              data.map((d, i) =>
+                i % 3 === 0 && d.tempF != null ? (
+                  <text key={`tl${i}`} x={d.x} y={yTemp(d.tempF) - 8} className="hg-val" fill={SERIES.temp.color}>
+                    {displayTempF(d.tempF, temp)}°
+                  </text>
+                ) : null,
+              )}
 
             {/* Hour labels */}
             {data.map((d, i) =>

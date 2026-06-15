@@ -538,6 +538,14 @@
   border-radius: 5px;
   white-space: nowrap;
 }
+.hg-axis-pin-right {
+  left: auto;
+  right: 0;
+}
+.hg-axis-pin-right span {
+  left: auto;
+  right: 4px;
+}
 .hgraph-scroll {
   overflow-x: auto;
   scrollbar-width: none;
