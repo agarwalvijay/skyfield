@@ -19,7 +19,9 @@ import { HourlyScreen } from "@/screens/HourlyScreen";
 import { DailyScreen } from "@/screens/DailyScreen";
 import { RadarScreen } from "@/screens/RadarScreen";
 import { MoreScreen } from "@/screens/MoreScreen";
+import { DashboardScreen } from "@/screens/DashboardScreen";
 import { Welcome } from "@/components/Welcome";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 export default function App() {
   const queryClient = useQueryClient();
@@ -30,6 +32,9 @@ export default function App() {
 
   const [tab, setTab] = useState<TabId>("now");
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Wide screens get a single full-viewport dashboard; narrow screens keep the
+  // tabbed, scrolling mobile layout.
+  const isWide = useMediaQuery("(min-width: 1024px)");
 
   // When GPS is the chosen location but the live fix isn't ready, don't fall
   // back to a saved location (which would show its forecast, then jump to GPS).
@@ -72,8 +77,10 @@ export default function App() {
 
   const locating = status === "locating" && !active;
 
+  const wideDash = isWide && !!active;
+
   return (
-    <div className="app">
+    <div className={`app${wideDash ? " app-wide" : ""}`}>
       <SkyBackground theme={sky.theme} code={sky.cond.code} isDay={sky.cond.isDay} />
       <div className="grain" />
 
@@ -106,28 +113,34 @@ export default function App() {
             <AlertBanner alerts={alertsQ.data} accent={sky.theme.accent} />
           )}
 
-          <div className="screen-wrap">
-            {/* No AnimatePresence here: with mode="wait", a dropped exit
-               completion leaves the next tab unmounted (blank screen). The
-               keyed remount still plays the enter animation. */}
-            <motion.div
-              key={tab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              style={{ height: "100%" }}
-            >
-              {tab === "now" && (
-                <NowScreen sky={sky} alerts={alertsQ.data ?? []} onSeeDaily={() => setTab("daily")} />
-              )}
-              {tab === "hourly" && <HourlyScreen />}
-              {tab === "daily" && <DailyScreen accent={sky.theme.accent} />}
-              {tab === "radar" && <RadarScreen alerts={alertsQ.data ?? []} />}
-              {tab === "more" && <MoreScreen accent={sky.theme.accent} />}
-            </motion.div>
-          </div>
+          {wideDash ? (
+            <DashboardScreen sky={sky} alerts={alertsQ.data ?? []} />
+          ) : (
+            <>
+              <div className="screen-wrap">
+                {/* No AnimatePresence here: with mode="wait", a dropped exit
+                   completion leaves the next tab unmounted (blank screen). The
+                   keyed remount still plays the enter animation. */}
+                <motion.div
+                  key={tab}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                  style={{ height: "100%" }}
+                >
+                  {tab === "now" && (
+                    <NowScreen sky={sky} alerts={alertsQ.data ?? []} onSeeDaily={() => setTab("daily")} />
+                  )}
+                  {tab === "hourly" && <HourlyScreen />}
+                  {tab === "daily" && <DailyScreen accent={sky.theme.accent} />}
+                  {tab === "radar" && <RadarScreen alerts={alertsQ.data ?? []} />}
+                  {tab === "more" && <MoreScreen accent={sky.theme.accent} />}
+                </motion.div>
+              </div>
 
-          <TabBar active={tab} onChange={setTab} alertCount={alertsQ.data?.length ?? 0} />
+              <TabBar active={tab} onChange={setTab} alertCount={alertsQ.data?.length ?? 0} />
+            </>
+          )}
         </WeatherProvider>
       )}
 
