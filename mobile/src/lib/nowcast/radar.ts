@@ -13,17 +13,23 @@ function tileUrl(host: string, frame: RadarFrame, x: number, y: number): string 
   return `${host}${frame.path}/256/${Z}/${x}/${y}/4/0_1.png`;
 }
 
-/** Highest level among the point pixel + a ring ~20km around it. */
-function neighborhoodLevel(tile: DecodedTile, px: number, py: number): RainLevel {
+/** Highest level in a 3×3 ring of radius `r` px around (cx, cy). Sampling a
+ *  small neighborhood instead of a single pixel avoids radar gaps/noise reading
+ *  as "dry" — critical when projecting whether rain will continue or clear. */
+function ringMax(tile: DecodedTile, cx: number, cy: number, r: number): RainLevel {
   let max: RainLevel = 0;
-  const offsets = [-18, 0, 18];
-  for (const dx of offsets) {
-    for (const dy of offsets) {
-      const lvl = pixelLevel(tile.at(px + dx, py + dy));
+  for (const ox of [-r, 0, r]) {
+    for (const oy of [-r, 0, r]) {
+      const lvl = pixelLevel(tile.at(cx + ox, cy + oy));
       if (lvl > max) max = lvl;
     }
   }
   return max;
+}
+
+/** Highest level among the point pixel + a ring ~20km around it. */
+function neighborhoodLevel(tile: DecodedTile, px: number, py: number): RainLevel {
+  return ringMax(tile, px, py, 18);
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -136,7 +142,9 @@ export async function getRadarNowcast(
   if (latestTile && (dx !== 0 || dy !== 0 || nowLevel > 0)) {
     for (let t = 1; t <= 3; t++) {
       // Precip currently "upwind" of the point arrives at the point in t steps.
-      futureLevels.push(pixelLevel(latestTile.at(px - t * dx, py - t * dy)) as RainLevel);
+      // Sample a small neighborhood (not one pixel) so a radar gap doesn't read
+      // as a false "dry" and over-predict clearing.
+      futureLevels.push(ringMax(latestTile, px - t * dx, py - t * dy, 9));
     }
     futureLevels.forEach((level, k) => {
       const min = (k + 1) * 10;
@@ -156,17 +164,24 @@ export async function getRadarNowcast(
   // ---- Summary: present + projected near futureLevels ----
   let summary: string;
   let precipitatingNow = false;
-  const firstDry = futureLevels.findIndex((l) => l < 1);
   const firstWet = futureLevels.findIndex((l) => l >= 1);
+  // Only call it "clearing" when the projection goes dry AND *stays* dry through
+  // the end of the window — a single dry step with rain after it is not clearing,
+  // and broad/stationary rain (no clear motion) should read as "continuing".
+  // clearIdx = first index of the persistent dry tail (-1 if it never settles).
+  let clearIdx = -1;
+  for (let i = futureLevels.length - 1; i >= 0; i--) {
+    if (futureLevels[i] >= 1) break;
+    clearIdx = i;
+  }
 
   if (nowLevel >= 1) {
     precipitatingNow = true;
     const word = cap(levelWord(nowLevel));
-    if (futureLevels.length && futureLevels.every((l) => l < 1)) {
-      const mins = (firstDry + 1) * 10;
-      summary = `${word} rain now — clearing in ~${mins} min`;
-    } else if (firstDry > 0) {
-      summary = `${word} rain now — easing, clearing in ~${(firstDry + 1) * 10} min`;
+    if (clearIdx === 0) {
+      summary = `${word} rain now — clearing in ~10 min`;
+    } else if (clearIdx > 0) {
+      summary = `${word} rain now — easing, clearing in ~${(clearIdx + 1) * 10} min`;
     } else if (trend >= 1 || (futureLevels.length && futureLevels[futureLevels.length - 1] > nowLevel)) {
       summary = `${word} rain now — building`;
     } else if (trend <= -1) {
