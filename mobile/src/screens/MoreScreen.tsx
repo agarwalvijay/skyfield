@@ -59,6 +59,15 @@ export function MoreScreen({ accent }: { accent: string }) {
             thumbColor="#fff"
           />
         </SettingRow>
+        <View style={s.divider} />
+        <SettingRow label="Rain starting / stopping">
+          <Switch
+            value={settings.rainNotifications}
+            onValueChange={settings.setRainNotifications}
+            trackColor={{ true: accent, false: "rgba(255,255,255,0.2)" }}
+            thumbColor="#fff"
+          />
+        </SettingRow>
       </View>
 
       <SectionTitle>Units</SectionTitle>

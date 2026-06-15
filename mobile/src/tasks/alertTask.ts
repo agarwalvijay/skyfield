@@ -31,9 +31,15 @@ TaskManager.defineTask(ALERT_TASK, async () => {
     const { refreshAllWidgets } = await import("@/widgets/refreshWidgets");
     await refreshAllWidgets();
 
-    if (!(await notificationsEnabled())) return BackgroundTask.BackgroundTaskResult.Success;
     const loc = await readWidgetLocation();
     if (!loc) return BackgroundTask.BackgroundTaskResult.Success;
+
+    // Rain start/stop notifications (independent of the alert-notification
+    // toggle; has its own setting + de-duplication).
+    const { checkRainNotification } = await import("./rainTask");
+    await checkRainNotification(loc);
+
+    if (!(await notificationsEnabled())) return BackgroundTask.BackgroundTaskResult.Success;
 
     const alerts = await getActiveAlerts({ lat: loc.lat, lon: loc.lon });
     if (alerts.length === 0) return BackgroundTask.BackgroundTaskResult.Success;

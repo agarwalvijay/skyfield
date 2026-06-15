@@ -14,6 +14,7 @@ interface SettingsState {
   radarColor: number;
   radarBasemap: RadarBasemap;
   alertNotifications: boolean;
+  rainNotifications: boolean;
   setTemp: (t: TempUnit) => void;
   setWind: (w: WindUnit) => void;
   setPressure: (p: PressureUnit) => void;
@@ -22,6 +23,7 @@ interface SettingsState {
   setRadarColor: (c: number) => void;
   setRadarBasemap: (b: RadarBasemap) => void;
   setAlertNotifications: (v: boolean) => void;
+  setRainNotifications: (v: boolean) => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -35,6 +37,7 @@ export const useSettings = create<SettingsState>()(
       radarColor: 4,
       radarBasemap: "dark" as RadarBasemap,
       alertNotifications: true,
+      rainNotifications: true,
       setTemp: (temp) => set({ temp }),
       setWind: (wind) => set({ wind }),
       setPressure: (pressure) => set({ pressure }),
@@ -43,6 +46,7 @@ export const useSettings = create<SettingsState>()(
       setRadarColor: (radarColor) => set({ radarColor }),
       setRadarBasemap: (radarBasemap) => set({ radarBasemap }),
       setAlertNotifications: (alertNotifications) => set({ alertNotifications }),
+      setRainNotifications: (rainNotifications) => set({ rainNotifications }),
     }),
     { name: "skyfield.settings", storage: createJSONStorage(() => AsyncStorage) },
   ),
