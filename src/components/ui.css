@@ -963,6 +963,9 @@
 }
 .seg-btn[data-active="true"] {
   color: #0a0e1a;
+  /* Guaranteed solid fill so the active label is always readable even if the
+     Framer layout pill mis-measures to zero width (e.g. on modal open). */
+  background: var(--fg);
 }
 .seg-btn span {
   position: relative;
