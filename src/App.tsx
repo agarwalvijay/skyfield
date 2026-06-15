@@ -143,23 +143,25 @@ export default function App() {
               <TabBar active={tab} onChange={setTab} alertCount={alertsQ.data?.length ?? 0} />
             </>
           )}
+
+          {/* Settings modal — inside the provider so MoreScreen's useWeatherCtx
+             resolves (otherwise it throws and blanks the app). */}
+          {moreOpen && (
+            <div className="more-modal" onClick={() => setMoreOpen(false)}>
+              <div className="more-panel" onClick={(e) => e.stopPropagation()}>
+                <button className="more-close" onClick={() => setMoreOpen(false)} aria-label="Close settings">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
+                  </svg>
+                </button>
+                <MoreScreen accent={sky.theme.accent} />
+              </div>
+            </div>
+          )}
         </WeatherProvider>
       )}
 
       <LocationSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
-
-      {moreOpen && (
-        <div className="more-modal" onClick={() => setMoreOpen(false)}>
-          <div className="more-panel" onClick={(e) => e.stopPropagation()}>
-            <button className="more-close" onClick={() => setMoreOpen(false)} aria-label="Close settings">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
-              </svg>
-            </button>
-            <MoreScreen accent={sky.theme.accent} />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
