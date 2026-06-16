@@ -15,6 +15,8 @@ interface SettingsState {
   radarBasemap: RadarBasemap;
   alertNotifications: boolean;
   rainNotifications: boolean;
+  /** Show + notify for "Hydrologic Outlook" alerts (low-urgency outlooks). */
+  hydrologicOutlook: boolean;
   setTemp: (t: TempUnit) => void;
   setWind: (w: WindUnit) => void;
   setPressure: (p: PressureUnit) => void;
@@ -24,6 +26,7 @@ interface SettingsState {
   setRadarBasemap: (b: RadarBasemap) => void;
   setAlertNotifications: (v: boolean) => void;
   setRainNotifications: (v: boolean) => void;
+  setHydrologicOutlook: (v: boolean) => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -38,6 +41,7 @@ export const useSettings = create<SettingsState>()(
       radarBasemap: "dark" as RadarBasemap,
       alertNotifications: true,
       rainNotifications: true,
+      hydrologicOutlook: true,
       setTemp: (temp) => set({ temp }),
       setWind: (wind) => set({ wind }),
       setPressure: (pressure) => set({ pressure }),
@@ -47,6 +51,7 @@ export const useSettings = create<SettingsState>()(
       setRadarBasemap: (radarBasemap) => set({ radarBasemap }),
       setAlertNotifications: (alertNotifications) => set({ alertNotifications }),
       setRainNotifications: (rainNotifications) => set({ rainNotifications }),
+      setHydrologicOutlook: (hydrologicOutlook) => set({ hydrologicOutlook }),
     }),
     { name: "skyfield.settings", storage: createJSONStorage(() => AsyncStorage) },
   ),

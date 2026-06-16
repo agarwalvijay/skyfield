@@ -106,6 +106,24 @@ export function MoreScreen({ accent }: { accent: string }) {
         </div>
       </section>
 
+      {/* Alerts */}
+      <section>
+        <h2 className="section-title">Alerts</h2>
+        <div className="card settings-card">
+          <SettingRow label="Hydrologic Outlook">
+            <Segmented
+              id="hydro"
+              value={settings.hydrologicOutlook ? "on" : "off"}
+              onChange={(v) => settings.setHydrologicOutlook(v === "on")}
+              options={[
+                { value: "on", label: "On" },
+                { value: "off", label: "Off" },
+              ]}
+            />
+          </SettingRow>
+        </div>
+      </section>
+
       {/* About */}
       <section>
         <h2 className="section-title">About</h2>

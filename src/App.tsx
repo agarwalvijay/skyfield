@@ -6,6 +6,8 @@ import "./components/ui.css";
 import { GPS_ID, useGeolocation } from "@/hooks/useGeolocation";
 import { useLocationStore, type SavedLocation } from "@/store/locations";
 import { usePointMeta, useCurrentConditions, useAlerts, useNowcast } from "@/hooks/useWeather";
+import { HYDROLOGIC_OUTLOOK } from "@/lib/nws";
+import { useSettings } from "@/store/settings";
 import { effectiveCondition } from "@/lib/weather/effective";
 import { skyFor } from "@/lib/weather/sky";
 import { SkyBackground } from "@/components/SkyBackground";
@@ -55,6 +57,14 @@ export default function App() {
   const radarLevel = nowcastQ.data?.radarLevel ?? 0;
   const currentQ = useCurrentConditions(metaQ.data, radarLevel);
   const alertsQ = useAlerts(coords);
+  const hydrologicOutlook = useSettings((s) => s.hydrologicOutlook);
+
+  // Honor the "Hydrologic Outlook" setting everywhere alerts are shown.
+  const alerts = useMemo(
+    () =>
+      (alertsQ.data ?? []).filter((a) => hydrologicOutlook || a.event !== HYDROLOGIC_OUTLOOK),
+    [alertsQ.data, hydrologicOutlook],
+  );
 
   // Derive sky from the effective condition (radar-driven during precip).
   const sky = useMemo(() => {
@@ -111,12 +121,12 @@ export default function App() {
             onOpenMore={wideDash ? () => setMoreOpen(true) : undefined}
           />
 
-          {alertsQ.data && alertsQ.data.length > 0 && (
-            <AlertBanner alerts={alertsQ.data} accent={sky.theme.accent} />
+          {alerts.length > 0 && (
+            <AlertBanner alerts={alerts} accent={sky.theme.accent} />
           )}
 
           {wideDash ? (
-            <DashboardScreen sky={sky} alerts={alertsQ.data ?? []} />
+            <DashboardScreen sky={sky} alerts={alerts} />
           ) : (
             <>
               <div className="screen-wrap">
@@ -131,16 +141,16 @@ export default function App() {
                   style={{ height: "100%" }}
                 >
                   {tab === "now" && (
-                    <NowScreen sky={sky} alerts={alertsQ.data ?? []} onSeeDaily={() => setTab("daily")} />
+                    <NowScreen sky={sky} alerts={alerts} onSeeDaily={() => setTab("daily")} />
                   )}
                   {tab === "hourly" && <HourlyScreen />}
                   {tab === "daily" && <DailyScreen accent={sky.theme.accent} />}
-                  {tab === "radar" && <RadarScreen alerts={alertsQ.data ?? []} />}
+                  {tab === "radar" && <RadarScreen alerts={alerts} />}
                   {tab === "more" && <MoreScreen accent={sky.theme.accent} />}
                 </motion.div>
               </div>
 
-              <TabBar active={tab} onChange={setTab} alertCount={alertsQ.data?.length ?? 0} />
+              <TabBar active={tab} onChange={setTab} alertCount={alerts.length} />
             </>
           )}
 

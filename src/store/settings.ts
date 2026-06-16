@@ -12,6 +12,8 @@ interface SettingsState {
   clock24h: boolean;
   radarColor: number;
   radarBasemap: RadarBasemap;
+  /** Show "Hydrologic Outlook" alerts (low-urgency river/flood outlooks). */
+  hydrologicOutlook: boolean;
   setTemp: (t: TempUnit) => void;
   setWind: (w: WindUnit) => void;
   setPressure: (p: PressureUnit) => void;
@@ -19,6 +21,7 @@ interface SettingsState {
   setClock24h: (v: boolean) => void;
   setRadarColor: (c: number) => void;
   setRadarBasemap: (b: RadarBasemap) => void;
+  setHydrologicOutlook: (v: boolean) => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -31,6 +34,7 @@ export const useSettings = create<SettingsState>()(
       clock24h: false,
       radarColor: 4,
       radarBasemap: "dark" as RadarBasemap,
+      hydrologicOutlook: true,
       setTemp: (temp) => set({ temp }),
       setWind: (wind) => set({ wind }),
       setPressure: (pressure) => set({ pressure }),
@@ -38,6 +42,7 @@ export const useSettings = create<SettingsState>()(
       setClock24h: (clock24h) => set({ clock24h }),
       setRadarColor: (radarColor) => set({ radarColor }),
       setRadarBasemap: (radarBasemap) => set({ radarBasemap }),
+      setHydrologicOutlook: (hydrologicOutlook) => set({ hydrologicOutlook }),
     }),
     { name: "skyfield.settings" },
   ),

@@ -1,6 +1,9 @@
 import { nwsFetch } from "./client";
 import type { Coordinates, WeatherAlert } from "./types";
 
+/** NWS event name for the low-urgency Hydrologic Outlook (ESF) product. */
+export const HYDROLOGIC_OUTLOOK = "Hydrologic Outlook";
+
 interface AlertsResponse {
   features: Array<{
     id: string;

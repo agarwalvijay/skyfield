@@ -127,6 +127,16 @@ export function DashboardScreen({
           </div>
         </div>
 
+        {(air.data || uv.data) && coords && (
+          <AirSunCard
+            air={air.data}
+            uv={uv.data}
+            lat={coords.lat}
+            lon={coords.lon}
+            timeZone={meta?.timeZone}
+          />
+        )}
+
         {cur && (
           <div className="metric-grid dash-metrics">
             <MetricTile
@@ -151,16 +161,6 @@ export function DashboardScreen({
               unit={imperialDistance ? "mi" : "km"}
             />
           </div>
-        )}
-
-        {(air.data || uv.data) && coords && (
-          <AirSunCard
-            air={air.data}
-            uv={uv.data}
-            lat={coords.lat}
-            lon={coords.lon}
-            timeZone={meta?.timeZone}
-          />
         )}
       </section>
 

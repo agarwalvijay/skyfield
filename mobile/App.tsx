@@ -15,6 +15,7 @@ import { ActivityIndicator, AppState, Platform, Text } from "react-native";
 import { GPS_ID, useGeolocation } from "@/hooks/useGeolocation";
 import { activeLocation, useLocationStore } from "@/store/locations";
 import { useAlerts, useCurrentConditions, useForecast, useNowcast, usePointMeta } from "@/hooks/useWeather";
+import { HYDROLOGIC_OUTLOOK } from "@/lib/nws";
 import { useSettings } from "@/store/settings";
 import { buildWidgetWeather, storeAppSnapshot } from "@/widgets/widgetData";
 import { refreshAllWidgets } from "@/widgets/refreshWidgets";
@@ -69,6 +70,13 @@ function Main() {
   const alertsQ = useAlerts(coords);
   const tempUnit = useSettings((sStore) => sStore.temp);
   const windUnit = useSettings((sStore) => sStore.wind);
+  const hydrologicOutlook = useSettings((sStore) => sStore.hydrologicOutlook);
+
+  // Honor the "Hydrologic Outlook" setting wherever alerts surface.
+  const alerts = useMemo(
+    () => (alertsQ.data ?? []).filter((a) => hydrologicOutlook || a.event !== HYDROLOGIC_OUTLOOK),
+    [alertsQ.data, hydrologicOutlook],
+  );
 
   // Keep the background alert task aware of the active location.
   useEffect(() => {
@@ -92,13 +100,13 @@ function Main() {
       active.label,
       currentQ.data ?? null,
       forecastQ.data ?? [],
-      alertsQ.data ?? [],
+      alerts,
       { temp: tempUnit, wind: windUnit },
       ncLine,
     );
     if (Platform.OS === "android") storeAppSnapshot(active, snapshot);
     else if (Platform.OS === "ios") writeIosWidget(snapshot);
-  }, [active, currentQ.data, forecastQ.data, alertsQ.data, nowcastQ.data, tempUnit, windUnit]);
+  }, [active, currentQ.data, forecastQ.data, alerts, nowcastQ.data, tempUnit, windUnit]);
 
   // When the app goes to the background, push the latest to widgets.
   useEffect(() => {
@@ -154,20 +162,20 @@ function Main() {
             onOpenLocations={() => setSheetOpen(true)}
             topInset={insets.top}
           />
-          {alertsQ.data && alertsQ.data.length > 0 && <AlertBanner alerts={alertsQ.data} />}
+          {alerts.length > 0 && <AlertBanner alerts={alerts} />}
 
           <View style={{ flex: 1 }}>
             {tab === "now" && <NowScreen sky={sky} onSeeDaily={() => setTab("daily")} />}
             {tab === "hourly" && <HourlyScreen />}
             {tab === "daily" && <DailyScreen accent={sky.theme.accent} />}
-            {tab === "radar" && <RadarScreen alerts={alertsQ.data ?? []} />}
+            {tab === "radar" && <RadarScreen alerts={alerts} />}
             {tab === "more" && <MoreScreen accent={sky.theme.accent} />}
           </View>
 
           <TabBar
             active={tab}
             onChange={setTab}
-            alertCount={alertsQ.data?.length ?? 0}
+            alertCount={alerts.length}
             bottomInset={insets.bottom}
           />
         </WeatherProvider>

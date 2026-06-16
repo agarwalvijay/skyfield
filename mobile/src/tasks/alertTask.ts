@@ -2,7 +2,7 @@ import * as TaskManager from "expo-task-manager";
 import * as BackgroundTask from "expo-background-task";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getActiveAlerts, severityRank } from "@/lib/nws";
+import { getActiveAlerts, severityRank, HYDROLOGIC_OUTLOOK } from "@/lib/nws";
 import { readWidgetLocation, storeWidgetLocation } from "./widgetLocation";
 import type { SavedLocation } from "@/store/locations";
 
@@ -10,15 +10,18 @@ export const ALERT_TASK = "skyfield-alert-check";
 const SEEN_KEY = "skyfield.seenAlertIds";
 const ENABLED_KEY = "skyfield.settings"; // zustand persist blob
 
-async function notificationsEnabled(): Promise<boolean> {
+/** Read a boolean flag from the persisted settings blob (default true). */
+async function settingEnabled(key: string): Promise<boolean> {
   try {
     const raw = await AsyncStorage.getItem(ENABLED_KEY);
     if (!raw) return true;
-    return JSON.parse(raw)?.state?.alertNotifications !== false;
+    return JSON.parse(raw)?.state?.[key] !== false;
   } catch {
     return true;
   }
 }
+
+const notificationsEnabled = () => settingEnabled("alertNotifications");
 
 /**
  * Background check: fetch active alerts for the last active location and fire
@@ -41,7 +44,11 @@ TaskManager.defineTask(ALERT_TASK, async () => {
 
     if (!(await notificationsEnabled())) return BackgroundTask.BackgroundTaskResult.Success;
 
-    const alerts = await getActiveAlerts({ lat: loc.lat, lon: loc.lon });
+    let alerts = await getActiveAlerts({ lat: loc.lat, lon: loc.lon });
+    // Honor the Hydrologic Outlook setting (suppress its notifications when off).
+    if (!(await settingEnabled("hydrologicOutlook"))) {
+      alerts = alerts.filter((a) => a.event !== HYDROLOGIC_OUTLOOK);
+    }
     if (alerts.length === 0) return BackgroundTask.BackgroundTaskResult.Success;
 
     const seenRaw = await AsyncStorage.getItem(SEEN_KEY);
