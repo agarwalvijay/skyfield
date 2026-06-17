@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   Camera,
   type CameraRef,
@@ -56,6 +56,29 @@ export function RadarScreen({ alerts }: { alerts: WeatherAlert[] }) {
     setPlaying((p) => !p);
   };
   const cameraRef = useRef<CameraRef>(null);
+
+  // Draggable timeline scrubber. Refs hold live values so the (once-created)
+  // PanResponder never closes over stale state.
+  const framesLenRef = useRef(0);
+  framesLenRef.current = radar?.frames.length ?? 0;
+  const trackWRef = useRef(240);
+  const seekTo = useRef((locationX: number) => {
+    const len = framesLenRef.current;
+    if (len <= 1) return;
+    const ratio = Math.max(0, Math.min(1, locationX / trackWRef.current));
+    setFrameIdx(Math.round(ratio * (len - 1)));
+  }).current;
+  const scrub = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => {
+        setPlaying(false);
+        seekTo(e.nativeEvent.locationX);
+      },
+      onPanResponderMove: (e) => seekTo(e.nativeEvent.locationX),
+    }),
+  ).current;
 
   const flyTo = (lon: number, lat: number) =>
     cameraRef.current?.flyTo({ center: [lon, lat], duration: 700 });
@@ -275,18 +298,16 @@ export function RadarScreen({ alerts }: { alerts: WeatherAlert[] }) {
               )}
             </Svg>
           </Pressable>
-          <Pressable
+          <View
             style={s.track}
-            onPress={(e) => {
-              if (!radar) return;
-              setPlaying(false);
-              const ratio = e.nativeEvent.locationX / 240;
-              setFrameIdx(Math.round(Math.max(0, Math.min(1, ratio)) * (radar.frames.length - 1)));
+            onLayout={(e) => {
+              trackWRef.current = e.nativeEvent.layout.width;
             }}
+            {...scrub.panHandlers}
           >
             <View style={s.trackLine} />
             <View style={[s.trackThumb, { left: `${progress * 100}%` }]} />
-          </Pressable>
+          </View>
           <Text style={s.timeLabel}>
             {current
               ? `${current.forecast ? "FCST " : ""}${new Date(current.time * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
