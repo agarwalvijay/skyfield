@@ -1703,3 +1703,49 @@
   border: 1px solid var(--glass-border);
   color: var(--fg);
 }
+
+/* ---- Mute alert type (in the alert reader) + muted list (settings) ---- */
+.alert-mute {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  color: var(--fg-dim);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+.alert-mute:active {
+  transform: scale(0.97);
+}
+.muted-empty {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.muted-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.muted-row:last-child {
+  border-bottom: none;
+}
+.muted-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.muted-unmute {
+  font-weight: 700;
+  font-size: 0.86rem;
+  color: var(--accent);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--glass);
+}

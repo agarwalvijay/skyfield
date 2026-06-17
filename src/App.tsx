@@ -6,7 +6,6 @@ import "./components/ui.css";
 import { GPS_ID, useGeolocation } from "@/hooks/useGeolocation";
 import { useLocationStore, type SavedLocation } from "@/store/locations";
 import { usePointMeta, useCurrentConditions, useAlerts, useNowcast } from "@/hooks/useWeather";
-import { HYDROLOGIC_OUTLOOK } from "@/lib/nws";
 import { useSettings } from "@/store/settings";
 import { effectiveCondition } from "@/lib/weather/effective";
 import { skyFor } from "@/lib/weather/sky";
@@ -57,13 +56,12 @@ export default function App() {
   const radarLevel = nowcastQ.data?.radarLevel ?? 0;
   const currentQ = useCurrentConditions(metaQ.data, radarLevel);
   const alertsQ = useAlerts(coords);
-  const hydrologicOutlook = useSettings((s) => s.hydrologicOutlook);
+  const mutedAlerts = useSettings((s) => s.mutedAlerts);
 
-  // Honor the "Hydrologic Outlook" setting everywhere alerts are shown.
+  // Hide muted event types everywhere alerts surface.
   const alerts = useMemo(
-    () =>
-      (alertsQ.data ?? []).filter((a) => hydrologicOutlook || a.event !== HYDROLOGIC_OUTLOOK),
-    [alertsQ.data, hydrologicOutlook],
+    () => (alertsQ.data ?? []).filter((a) => !mutedAlerts.includes(a.event)),
+    [alertsQ.data, mutedAlerts],
   );
 
   // Derive sky from the effective condition (radar-driven during precip).

@@ -4,10 +4,12 @@ import Svg, { Path } from "react-native-svg";
 import type { WeatherAlert } from "@/lib/nws";
 import { alertColor } from "@/lib/weather/alertColor";
 import { fullTime } from "@/lib/format/time";
+import { useSettings } from "@/store/settings";
 import { colors, fonts } from "@/theme";
 
 export function AlertBanner({ alerts }: { alerts: WeatherAlert[] }) {
   const [open, setOpen] = useState<WeatherAlert | null>(null);
+  const toggleMutedAlert = useSettings((st) => st.toggleMutedAlert);
   const top = alerts[0];
   if (!top) return null;
   const color = alertColor(top.severity);
@@ -60,6 +62,19 @@ export function AlertBanner({ alerts }: { alerts: WeatherAlert[] }) {
                     </View>
                   ))}
                 </View>
+                <Pressable
+                  style={s.mute}
+                  onPress={() => {
+                    toggleMutedAlert(open.event);
+                    setOpen(null);
+                  }}
+                >
+                  <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={colors.fgDim} strokeWidth={2}>
+                    <Path d="M13.73 21a2 2 0 0 1-3.46 0M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-1-1.4-2-4" strokeLinecap="round" strokeLinejoin="round" />
+                    <Path d="M3 3l18 18" strokeLinecap="round" />
+                  </Svg>
+                  <Text style={s.muteText}>Mute “{open.event}” — hide &amp; stop alerts</Text>
+                </Pressable>
                 {open.headline && <Text style={s.headline}>{open.headline}</Text>}
                 <Text style={s.meta}>{open.areaDesc}</Text>
                 {open.effective && (
@@ -86,6 +101,19 @@ export function AlertBanner({ alerts }: { alerts: WeatherAlert[] }) {
 }
 
 const s = StyleSheet.create({
+  mute: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    alignSelf: "flex-start",
+    marginTop: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  muteText: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.fgDim },
   banner: {
     flexDirection: "row",
     alignItems: "center",

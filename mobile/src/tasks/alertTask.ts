@@ -2,7 +2,7 @@ import * as TaskManager from "expo-task-manager";
 import * as BackgroundTask from "expo-background-task";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getActiveAlerts, severityRank, HYDROLOGIC_OUTLOOK } from "@/lib/nws";
+import { getActiveAlerts, severityRank } from "@/lib/nws";
 import { readWidgetLocation, storeWidgetLocation } from "./widgetLocation";
 import type { SavedLocation } from "@/store/locations";
 
@@ -10,18 +10,24 @@ export const ALERT_TASK = "skyfield-alert-check";
 const SEEN_KEY = "skyfield.seenAlertIds";
 const ENABLED_KEY = "skyfield.settings"; // zustand persist blob
 
-/** Read a boolean flag from the persisted settings blob (default true). */
-async function settingEnabled(key: string): Promise<boolean> {
+/** Read the persisted settings state blob (or null). */
+async function readSettings(): Promise<any | null> {
   try {
     const raw = await AsyncStorage.getItem(ENABLED_KEY);
-    if (!raw) return true;
-    return JSON.parse(raw)?.state?.[key] !== false;
+    return raw ? JSON.parse(raw)?.state ?? null : null;
   } catch {
-    return true;
+    return null;
   }
 }
 
-const notificationsEnabled = () => settingEnabled("alertNotifications");
+async function notificationsEnabled(): Promise<boolean> {
+  return (await readSettings())?.alertNotifications !== false;
+}
+
+async function mutedAlertEvents(): Promise<string[]> {
+  const m = (await readSettings())?.mutedAlerts;
+  return Array.isArray(m) ? m : [];
+}
 
 /**
  * Background check: fetch active alerts for the last active location and fire
@@ -45,10 +51,9 @@ TaskManager.defineTask(ALERT_TASK, async () => {
     if (!(await notificationsEnabled())) return BackgroundTask.BackgroundTaskResult.Success;
 
     let alerts = await getActiveAlerts({ lat: loc.lat, lon: loc.lon });
-    // Honor the Hydrologic Outlook setting (suppress its notifications when off).
-    if (!(await settingEnabled("hydrologicOutlook"))) {
-      alerts = alerts.filter((a) => a.event !== HYDROLOGIC_OUTLOOK);
-    }
+    // Suppress notifications for muted event types.
+    const muted = await mutedAlertEvents();
+    if (muted.length) alerts = alerts.filter((a) => !muted.includes(a.event));
     if (alerts.length === 0) return BackgroundTask.BackgroundTaskResult.Success;
 
     const seenRaw = await AsyncStorage.getItem(SEEN_KEY);

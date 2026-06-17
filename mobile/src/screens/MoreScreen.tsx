@@ -68,15 +68,28 @@ export function MoreScreen({ accent }: { accent: string }) {
             thumbColor="#fff"
           />
         </SettingRow>
-        <View style={s.divider} />
-        <SettingRow label="Hydrologic Outlook">
-          <Switch
-            value={settings.hydrologicOutlook}
-            onValueChange={settings.setHydrologicOutlook}
-            trackColor={{ true: accent, false: "rgba(255,255,255,0.2)" }}
-            thumbColor="#fff"
-          />
-        </SettingRow>
+      </View>
+
+      <SectionTitle>Muted Alerts</SectionTitle>
+      <View style={s.settings}>
+        {settings.mutedAlerts.length === 0 ? (
+          <Text style={s.mutedEmpty}>
+            No muted alerts. To stop seeing a hazard type (e.g. a Beach Hazards Statement), open its
+            banner and tap “Mute”.
+          </Text>
+        ) : (
+          settings.mutedAlerts.map((event, i) => (
+            <View key={event}>
+              {i > 0 && <View style={s.divider} />}
+              <View style={s.mutedRow}>
+                <Text style={s.mutedName}>{event}</Text>
+                <Pressable onPress={() => settings.toggleMutedAlert(event)} hitSlop={8}>
+                  <Text style={[s.mutedUnmute, { color: accent }]}>Unmute</Text>
+                </Pressable>
+              </View>
+            </View>
+          ))
+        )}
       </View>
 
       <SectionTitle>Units</SectionTitle>
@@ -248,6 +261,16 @@ const s = StyleSheet.create({
   },
   settingLabel: { fontFamily: fonts.bodySemi, fontSize: 14.5, color: colors.fg },
   divider: { height: 1, backgroundColor: colors.line },
+  mutedEmpty: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: colors.fgFaint, paddingVertical: 10 },
+  mutedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 12,
+  },
+  mutedName: { fontFamily: fonts.bodySemi, fontSize: 14.5, color: colors.fg, flexShrink: 1 },
+  mutedUnmute: { fontFamily: fonts.bodyBold, fontSize: 14 },
   about: { fontFamily: fonts.body, fontSize: 13.5, lineHeight: 20, color: colors.fg },
   scrim: { flex: 1, backgroundColor: "rgba(4,6,12,0.55)", justifyContent: "flex-end" },
   panel: {

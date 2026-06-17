@@ -106,21 +106,25 @@ export function MoreScreen({ accent }: { accent: string }) {
         </div>
       </section>
 
-      {/* Alerts */}
+      {/* Muted alerts */}
       <section>
-        <h2 className="section-title">Alerts</h2>
+        <h2 className="section-title">Muted Alerts</h2>
         <div className="card settings-card">
-          <SettingRow label="Hydrologic Outlook">
-            <Segmented
-              id="hydro"
-              value={settings.hydrologicOutlook ? "on" : "off"}
-              onChange={(v) => settings.setHydrologicOutlook(v === "on")}
-              options={[
-                { value: "on", label: "On" },
-                { value: "off", label: "Off" },
-              ]}
-            />
-          </SettingRow>
+          {settings.mutedAlerts.length === 0 ? (
+            <p className="muted-empty faint">
+              No muted alerts. To stop seeing a hazard type (e.g. a Beach Hazards Statement), open
+              its banner and tap <b>Mute</b>.
+            </p>
+          ) : (
+            settings.mutedAlerts.map((event) => (
+              <div key={event} className="muted-row">
+                <span className="muted-name">{event}</span>
+                <button className="muted-unmute" onClick={() => settings.toggleMutedAlert(event)}>
+                  Unmute
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </section>
 

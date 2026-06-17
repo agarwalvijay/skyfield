@@ -15,8 +15,8 @@ interface SettingsState {
   radarBasemap: RadarBasemap;
   alertNotifications: boolean;
   rainNotifications: boolean;
-  /** Show + notify for "Hydrologic Outlook" alerts (low-urgency outlooks). */
-  hydrologicOutlook: boolean;
+  /** NWS event names the user has muted (hidden + no notification). */
+  mutedAlerts: string[];
   setTemp: (t: TempUnit) => void;
   setWind: (w: WindUnit) => void;
   setPressure: (p: PressureUnit) => void;
@@ -26,7 +26,7 @@ interface SettingsState {
   setRadarBasemap: (b: RadarBasemap) => void;
   setAlertNotifications: (v: boolean) => void;
   setRainNotifications: (v: boolean) => void;
-  setHydrologicOutlook: (v: boolean) => void;
+  toggleMutedAlert: (event: string) => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -41,7 +41,7 @@ export const useSettings = create<SettingsState>()(
       radarBasemap: "dark" as RadarBasemap,
       alertNotifications: true,
       rainNotifications: true,
-      hydrologicOutlook: true,
+      mutedAlerts: [],
       setTemp: (temp) => set({ temp }),
       setWind: (wind) => set({ wind }),
       setPressure: (pressure) => set({ pressure }),
@@ -51,8 +51,25 @@ export const useSettings = create<SettingsState>()(
       setRadarBasemap: (radarBasemap) => set({ radarBasemap }),
       setAlertNotifications: (alertNotifications) => set({ alertNotifications }),
       setRainNotifications: (rainNotifications) => set({ rainNotifications }),
-      setHydrologicOutlook: (hydrologicOutlook) => set({ hydrologicOutlook }),
+      toggleMutedAlert: (event) =>
+        set((s) => ({
+          mutedAlerts: s.mutedAlerts.includes(event)
+            ? s.mutedAlerts.filter((e) => e !== event)
+            : [...s.mutedAlerts, event],
+        })),
     }),
-    { name: "skyfield.settings", storage: createJSONStorage(() => AsyncStorage) },
+    {
+      name: "skyfield.settings",
+      storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+      // Migrate the old single hydrologicOutlook flag into the muted list.
+      migrate: (persisted: any) => {
+        if (persisted && persisted.hydrologicOutlook === false) {
+          persisted.mutedAlerts = [...(persisted.mutedAlerts ?? []), "Hydrologic Outlook"];
+        }
+        if (persisted) delete persisted.hydrologicOutlook;
+        return persisted;
+      },
+    },
   ),
 );

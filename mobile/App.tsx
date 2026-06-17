@@ -15,7 +15,6 @@ import { ActivityIndicator, AppState, Platform, Text } from "react-native";
 import { GPS_ID, useGeolocation } from "@/hooks/useGeolocation";
 import { activeLocation, useLocationStore } from "@/store/locations";
 import { useAlerts, useCurrentConditions, useForecast, useNowcast, usePointMeta } from "@/hooks/useWeather";
-import { HYDROLOGIC_OUTLOOK } from "@/lib/nws";
 import { useSettings } from "@/store/settings";
 import { buildWidgetWeather, storeAppSnapshot } from "@/widgets/widgetData";
 import { refreshAllWidgets } from "@/widgets/refreshWidgets";
@@ -70,12 +69,12 @@ function Main() {
   const alertsQ = useAlerts(coords);
   const tempUnit = useSettings((sStore) => sStore.temp);
   const windUnit = useSettings((sStore) => sStore.wind);
-  const hydrologicOutlook = useSettings((sStore) => sStore.hydrologicOutlook);
+  const mutedAlerts = useSettings((sStore) => sStore.mutedAlerts);
 
-  // Honor the "Hydrologic Outlook" setting wherever alerts surface.
+  // Hide muted event types wherever alerts surface.
   const alerts = useMemo(
-    () => (alertsQ.data ?? []).filter((a) => hydrologicOutlook || a.event !== HYDROLOGIC_OUTLOOK),
-    [alertsQ.data, hydrologicOutlook],
+    () => (alertsQ.data ?? []).filter((a) => !mutedAlerts.includes(a.event)),
+    [alertsQ.data, mutedAlerts],
   );
 
   // Keep the background alert task aware of the active location.
