@@ -26,6 +26,17 @@ export function AlertBanner({ alerts }: { alerts: WeatherAlert[] }) {
             <Text style={s.countText}>+{alerts.length - 1}</Text>
           </View>
         )}
+        <Pressable
+          style={s.bannerBell}
+          hitSlop={8}
+          onPress={() => toggleMutedAlert(top.event)}
+          accessibilityLabel={`Mute ${top.event}`}
+        >
+          <Svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2}>
+            <Path d="M13.73 21a2 2 0 0 1-3.46 0M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-1-1.4-2-4" strokeLinecap="round" strokeLinejoin="round" />
+            <Path d="M3 3l18 18" strokeLinecap="round" />
+          </Svg>
+        </Pressable>
         <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.4}>
           <Path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
@@ -127,6 +138,14 @@ const s = StyleSheet.create({
   },
   pulse: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#fff" },
   bannerText: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 14, color: "#fff" },
+  bannerBell: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
   count: { backgroundColor: "rgba(255,255,255,0.25)", borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
   countText: { fontFamily: fonts.bodyBold, fontSize: 11, color: "#fff" },
   scrim: { flex: 1, backgroundColor: "rgba(4,6,12,0.55)", justifyContent: "flex-end" },
