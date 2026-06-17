@@ -249,9 +249,9 @@ export function RadarScreen({ alerts }: { alerts: WeatherAlert[] }) {
           {(
             [
               ["#5db8ff", "light"],
-              ["#3ad36b", "mod"],
-              ["#ffd84d", "heavy"],
-              ["#ff5a5f", "intense"],
+              ["#ffd633", "mod"],
+              ["#ff9500", "heavy"],
+              ["#e8392b", "intense"],
             ] as const
           ).map(([c, label]) => (
             <View key={label} style={s.legendItem}>

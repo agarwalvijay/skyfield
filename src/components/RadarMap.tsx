@@ -246,9 +246,9 @@ export function RadarMap({ forecast, gps, viewingGps, alerts }: Props) {
 
       <span className="radar-legend">
         <i style={{ background: "#5db8ff" }} /> light
-        <i style={{ background: "#3ad36b" }} /> mod
-        <i style={{ background: "#ffd84d" }} /> heavy
-        <i style={{ background: "#ff5a5f" }} /> intense
+        <i style={{ background: "#ffd633" }} /> mod
+        <i style={{ background: "#ff9500" }} /> heavy
+        <i style={{ background: "#e8392b" }} /> intense
       </span>
 
       {/* Marker key when both dots show */}
