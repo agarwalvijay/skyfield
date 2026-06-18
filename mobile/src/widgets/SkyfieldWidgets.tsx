@@ -10,7 +10,7 @@ import type { WidgetWeather } from "./widgetData";
 // rendered" widget (a manual refresh re-reads the real size and fixes it). A
 // flat backgroundColor is a native RemoteViews fill that always matches the
 // laid-out size, so it can't clip. (borderRadius stays 0 — the launcher rounds.)
-const BG = "#1e3f78" as const;
+const BG = "#2a5db0" as const;
 const FG = "#f3f6fc" as const;
 const DIM = "#9ef3f6fc" as const; // AARRGGBB: 62%-alpha near-white
 const ACCENT = "#ffd166" as const;
