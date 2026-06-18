@@ -3,12 +3,14 @@ import { FlexWidget, SvgWidget, TextWidget } from "react-native-android-widget";
 import { glyphSvg } from "./glyphSvg";
 import type { WidgetWeather } from "./widgetData";
 
-/** Sky gradient matching the app's palette. */
-const GRADIENT = {
-  from: "#2a5db0",
-  to: "#0e1a36",
-  orientation: "TOP_BOTTOM",
-} as const;
+// Solid background (NOT a gradient): react-native-android-widget can't express
+// a gradient in RemoteViews, so it rasterizes gradient/rounded roots to a bitmap
+// sized from the OS-reported widget dimensions — which are intermittently stale
+// or report the min height on boot/periodic-update, producing the "half
+// rendered" widget (a manual refresh re-reads the real size and fixes it). A
+// flat backgroundColor is a native RemoteViews fill that always matches the
+// laid-out size, so it can't clip. (borderRadius stays 0 — the launcher rounds.)
+const BG = "#1e3f78" as const;
 const FG = "#f3f6fc" as const;
 const DIM = "#9ef3f6fc" as const; // AARRGGBB: 62%-alpha near-white
 const ACCENT = "#ffd166" as const;
@@ -55,7 +57,7 @@ export function SmallWidget({ data }: { data: WidgetWeather | null }) {
       style={{
         height: "match_parent",
         width: "match_parent",
-        backgroundGradient: GRADIENT,
+        backgroundColor: BG,
         borderRadius: 0,
         padding: 12,
         flexDirection: "column",
@@ -119,7 +121,7 @@ export function LargeWidget({ data }: { data: WidgetWeather | null }) {
       style={{
         height: "match_parent",
         width: "match_parent",
-        backgroundGradient: GRADIENT,
+        backgroundColor: BG,
         borderRadius: 0,
         paddingVertical: 8,
         paddingHorizontal: 14,
