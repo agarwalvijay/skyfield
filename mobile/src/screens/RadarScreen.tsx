@@ -20,6 +20,10 @@ import type { WeatherAlert } from "@/lib/nws";
 import { EmptyBlock, Segmented } from "@/components/ui";
 import { colors, fonts } from "@/theme";
 
+/** Inset the scrubber thumb from each end so it's never flush with the edge
+ *  (which leaves no room to grab it) — the seek math uses the same inset. */
+const TRACK_PAD = 16;
+
 const BASEMAP_PATH: Record<RadarBasemap, string> = {
   dark: "dark_all",
   light: "light_all",
@@ -66,6 +70,7 @@ export function RadarScreen({ alerts }: { alerts: WeatherAlert[] }) {
   framesLenRef.current = radar?.frames.length ?? 0;
   const trackRef = useRef<View>(null);
   const trackBox = useRef({ x: 0, w: 240 });
+  const [trackW, setTrackW] = useState(0);
   const measureTrack = () =>
     trackRef.current?.measureInWindow((x, _y, w) => {
       if (w > 0) trackBox.current = { x, w };
@@ -73,8 +78,9 @@ export function RadarScreen({ alerts }: { alerts: WeatherAlert[] }) {
   const seekAbs = useRef((absX: number) => {
     const len = framesLenRef.current;
     const { x, w } = trackBox.current;
-    if (len <= 1 || w <= 0) return;
-    const ratio = Math.max(0, Math.min(1, (absX - x) / w));
+    const inner = w - 2 * TRACK_PAD;
+    if (len <= 1 || inner <= 0) return;
+    const ratio = Math.max(0, Math.min(1, (absX - x - TRACK_PAD) / inner));
     setFrameIdx(Math.round(ratio * (len - 1)));
   }).current;
   const scrub = useRef(
@@ -308,9 +314,23 @@ export function RadarScreen({ alerts }: { alerts: WeatherAlert[] }) {
               )}
             </Svg>
           </Pressable>
-          <View ref={trackRef} style={s.track} onLayout={measureTrack} {...scrub.panHandlers}>
+          <View
+            ref={trackRef}
+            style={s.track}
+            onLayout={(e) => {
+              setTrackW(e.nativeEvent.layout.width);
+              measureTrack();
+            }}
+            {...scrub.panHandlers}
+          >
             <View style={s.trackLine} pointerEvents="none" />
-            <View style={[s.trackThumb, { left: `${progress * 100}%` }]} pointerEvents="none" />
+            <View
+              style={[
+                s.trackThumb,
+                { left: TRACK_PAD + progress * Math.max(0, trackW - 2 * TRACK_PAD) },
+              ]}
+              pointerEvents="none"
+            />
           </View>
           <Text style={s.timeLabel}>
             {current
@@ -401,15 +421,22 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.glassBorder,
   },
-  track: { flex: 1, height: 28, justifyContent: "center" },
-  trackLine: { height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.2)" },
+  track: { flex: 1, height: 38, justifyContent: "center" },
+  trackLine: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    marginHorizontal: TRACK_PAD,
+  },
   trackThumb: {
     position: "absolute",
+    top: "50%",
     width: 14,
     height: 14,
     borderRadius: 7,
     backgroundColor: colors.accent,
     marginLeft: -7,
+    marginTop: -7,
   },
   timeLabel: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.fg, minWidth: 64, textAlign: "right" },
 });
