@@ -163,7 +163,12 @@ export async function fetchWidgetWeather(
   ]);
 
   const ncLine = nc && (nc.precipitatingNow || nc.type !== "none") ? nc.summary : null;
-  return buildWidgetWeather(loc.label, cur, forecast, alerts, units, ncLine);
+  const data = buildWidgetWeather(loc.label, cur, forecast, alerts, units, ncLine);
+  // Persist so the snapshot stays in sync with what the widget actually fetched
+  // — otherwise readLastSnapshot() (the instant render) can be OLDER than the
+  // widget's current display and a refresh flashes backwards to stale data.
+  await storeAppSnapshot(loc, data).catch(() => {});
+  return data;
 }
 
 /** fetchWidgetWeather with a hard timeout so the headless task can never hang. */
