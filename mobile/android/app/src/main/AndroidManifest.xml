@@ -32,14 +32,7 @@
         <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE"/>
       </intent-filter>
     </activity>
-    <receiver android:name=".widget.SkyfieldSmall" android:exported="false" android:label="Skyfield Small">
-      <intent-filter>
-        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
-        <action android:name="com.atsumilabs.skyfield.WIDGET_CLICK"/>
-      </intent-filter>
-      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widgetprovider_skyfieldsmall"/>
-    </receiver>
-    <receiver android:name=".widget.SkyfieldLarge" android:exported="false" android:label="Skyfield Banner">
+    <receiver android:name=".widget.SkyfieldLarge" android:exported="false" android:label="Skyfield">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
         <action android:name="com.atsumilabs.skyfield.WIDGET_CLICK"/>

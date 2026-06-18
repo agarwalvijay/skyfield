@@ -23,7 +23,6 @@ import java.io.FileInputStream;
  * stale-dimension clipping (the failure mode of the JS-rendered widget).
  */
 public class SkyfieldLarge extends AppWidgetProvider {
-    private static final String ACTION_REFRESH = "com.atsumilabs.skyfield.WIDGET_REFRESH";
     private static final String SNAPSHOT_FILE = "skyfield_widget.json";
 
     @Override
@@ -34,16 +33,6 @@ public class SkyfieldLarge extends AppWidgetProvider {
     @Override
     public void onAppWidgetOptionsChanged(Context context, AppWidgetManager mgr, int id, Bundle opts) {
         updateWidget(context, mgr, id);
-    }
-
-    @Override
-    public void onReceive(Context context, Intent intent) {
-        super.onReceive(context, intent);
-        if (ACTION_REFRESH.equals(intent.getAction())) {
-            AppWidgetManager mgr = AppWidgetManager.getInstance(context);
-            int[] ids = mgr.getAppWidgetIds(new ComponentName(context, SkyfieldLarge.class));
-            for (int id : ids) updateWidget(context, mgr, id);
-        }
     }
 
     private void updateWidget(Context context, AppWidgetManager mgr, int id) {
@@ -72,17 +61,14 @@ public class SkyfieldLarge extends AppWidgetProvider {
             v.setTextViewText(R.id.widget_sub, "Tap ⟳ to load");
         }
 
-        int flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
-
+        // Tap anywhere → open the app (which fetches fresh and rewrites the
+        // snapshot file this widget reads).
         Intent open = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
         if (open != null) {
             v.setOnClickPendingIntent(R.id.widget_root,
-                PendingIntent.getActivity(context, 0, open, flags));
+                PendingIntent.getActivity(context, 0, open,
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         }
-
-        Intent refresh = new Intent(context, SkyfieldLarge.class).setAction(ACTION_REFRESH);
-        v.setOnClickPendingIntent(R.id.widget_refresh,
-            PendingIntent.getBroadcast(context, 1, refresh, flags));
 
         mgr.updateAppWidget(id, v);
     }

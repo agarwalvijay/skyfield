@@ -1,27 +1,16 @@
-import React from "react";
 import { Platform } from "react-native";
-import { requestWidgetUpdate } from "react-native-android-widget";
-import { fetchWidgetWeatherQuick, readLastSnapshot } from "./widgetData";
-import { SmallWidget } from "./SkyfieldWidgets";
+import { fetchWidgetWeather } from "./widgetData";
 
 /**
- * Re-render the JS-rendered widgets. NOTE: SkyfieldLarge is now a NATIVE widget
- * (SkyfieldLarge.java) that reads the JSON snapshot file written by
- * storeAppSnapshot — we must NOT call requestWidgetUpdate for it, or the
- * library would overwrite the native layout with its own bitmap. Only the small
- * widget still goes through react-native-android-widget here. (Refreshing the
- * data via storeAppSnapshot already rewrites the file the native widget reads.)
+ * The widget is now NATIVE (SkyfieldLarge.java) and renders from the JSON
+ * snapshot file. "Refreshing" means: fetch fresh data for the active location
+ * and rewrite that file (storeAppSnapshot does the write inside
+ * fetchWidgetWeather). The native widget re-reads the file on its next update
+ * (periodic / resize / boot) or when the app opens. Called by the background
+ * task and after unit/location changes.
  */
 export async function refreshAllWidgets(): Promise<void> {
   if (Platform.OS !== "android") return;
-  await requestWidgetUpdate({
-    widgetName: "SkyfieldSmall",
-    renderWidget: async (info) => {
-      const data =
-        (await fetchWidgetWeatherQuick(info.widgetId, 12000).catch(() => null)) ??
-        (await readLastSnapshot().catch(() => null));
-      return React.createElement(SmallWidget, { data });
-    },
-    widgetNotFound: () => {},
-  }).catch(() => {});
+  // widgetId 0 → resolveWidgetLocation falls back to the active location.
+  await fetchWidgetWeather(0, true).catch(() => {});
 }

@@ -77,31 +77,13 @@
             android:textSize="11sp"
             android:text="" />
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/widget_updated"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:paddingTop="2dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/widget_updated"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingEnd="6dp"
-                android:textColor="#A8C0E0"
-                android:textSize="10sp"
-                android:text="" />
-
-            <TextView
-                android:id="@+id/widget_refresh"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:padding="4dp"
-                android:textColor="#CFE0F5"
-                android:textStyle="bold"
-                android:textSize="15sp"
-                android:text="⟳" />
-        </LinearLayout>
+            android:textColor="#A8C0E0"
+            android:textSize="10sp"
+            android:text="" />
     </LinearLayout>
 </LinearLayout>
