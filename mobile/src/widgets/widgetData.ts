@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as FileSystem from "expo-file-system/legacy";
 import {
   getActiveAlerts,
   getCurrentConditions,
@@ -110,6 +111,18 @@ interface AppSnapshot {
 export async function storeAppSnapshot(loc: SavedLocation, data: WidgetWeather): Promise<void> {
   const snap: AppSnapshot = { key: locationKey(loc.lat, loc.lon), at: Date.now(), data };
   await AsyncStorage.setItem(SNAP_KEY, JSON.stringify(snap));
+  // Also write a plain JSON file the NATIVE widget provider reads from
+  // getFilesDir(). documentDirectory === filesDir on Android.
+  await writeNativeWidgetFile(data).catch(() => {});
+}
+
+/** File the native AppWidgetProvider reads (see SkyfieldLarge.java). */
+export const NATIVE_WIDGET_FILE = "skyfield_widget.json";
+
+async function writeNativeWidgetFile(data: WidgetWeather): Promise<void> {
+  const dir = FileSystem.documentDirectory;
+  if (!dir) return;
+  await FileSystem.writeAsStringAsync(dir + NATIVE_WIDGET_FILE, JSON.stringify(data));
 }
 
 async function readFreshSnapshot(key: string): Promise<WidgetWeather | null> {
