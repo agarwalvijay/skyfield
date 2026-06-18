@@ -17,14 +17,17 @@ const ACCENT = "#ffd166" as const;
 const BLUE = "#9fc8f0" as const;
 
 /** Tap target that re-fetches data without opening the app. */
-function RefreshButton({ updated }: { updated?: string }) {
+function RefreshButton({ updated, updating }: { updated?: string; updating?: boolean }) {
   return (
     <FlexWidget
       clickAction="REFRESH"
-      style={{ flexDirection: "row", alignItems: "center", flexGap: 4, padding: 4 }}
+      style={{ flexDirection: "row", alignItems: "center", flexGap: 4, padding: 6 }}
     >
       {updated ? <TextWidget text={updated} style={{ fontSize: 10, color: DIM }} /> : null}
-      <TextWidget text="⟳" style={{ fontSize: 14, fontWeight: "700", color: DIM }} />
+      <TextWidget
+        text={updating ? "…" : "⟳"}
+        style={{ fontSize: 15, fontWeight: "700", color: updating ? ACCENT : DIM }}
+      />
     </FlexWidget>
   );
 }
@@ -50,7 +53,7 @@ function AlertStrip({ data }: { data: WidgetWeather }) {
 }
 
 /** 2×2 widget. */
-export function SmallWidget({ data }: { data: WidgetWeather | null }) {
+export function SmallWidget({ data, updating }: { data: WidgetWeather | null; updating?: boolean }) {
   return (
     <FlexWidget
       clickAction="OPEN_APP"
@@ -77,7 +80,7 @@ export function SmallWidget({ data }: { data: WidgetWeather | null }) {
           maxLines={1}
           style={{ fontSize: 12, fontWeight: "700", color: FG }}
         />
-        <RefreshButton />
+        <RefreshButton updating={updating} />
       </FlexWidget>
       {/* No React fragments anywhere in widget trees: the RemoteViews tree
          builder calls each element type as a function, and Fragment is a
@@ -114,7 +117,7 @@ export function SmallWidget({ data }: { data: WidgetWeather | null }) {
 }
 
 /** 4×1 banner widget — one dense row. */
-export function LargeWidget({ data }: { data: WidgetWeather | null }) {
+export function LargeWidget({ data, updating }: { data: WidgetWeather | null; updating?: boolean }) {
   return (
     <FlexWidget
       clickAction="OPEN_APP"
@@ -165,7 +168,7 @@ export function LargeWidget({ data }: { data: WidgetWeather | null }) {
               <TextWidget text={`L ${data.lo}`} style={{ fontSize: 13, fontWeight: "700", color: BLUE }} />
             </FlexWidget>
             <TextWidget text={`${data.wind} · ${data.humidity}`} style={{ fontSize: 11, color: FG }} />
-            <RefreshButton updated={data.updated} />
+            <RefreshButton updated={data.updated} updating={updating} />
           </FlexWidget>
         </FlexWidget>
       ) : (

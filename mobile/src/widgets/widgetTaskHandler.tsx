@@ -16,17 +16,26 @@ import { LargeWidget, SmallWidget } from "./SkyfieldWidgets";
  */
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<void> {
   const widget = props.widgetInfo.widgetName;
-  const el = (data: WidgetWeather | null) =>
-    widget === "SkyfieldLarge" ? <LargeWidget data={data} /> : <SmallWidget data={data} />;
+  const el = (data: WidgetWeather | null, updating = false) =>
+    widget === "SkyfieldLarge" ? (
+      <LargeWidget data={data} updating={updating} />
+    ) : (
+      <SmallWidget data={data} updating={updating} />
+    );
 
-  const render = async () => {
+  // force=true skips the cache (explicit refresh → real network pull).
+  // feedback=true shows the "…" updating state while it fetches.
+  const render = async ({ force = false, feedback = false } = {}) => {
     // 1) Always paint something right away (never blank).
     const last = await readLastSnapshot().catch(() => null);
-    props.renderWidget(el(last));
+    props.renderWidget(el(last, feedback));
 
-    // 2) Refresh with fresh data under a timeout; re-render only on success.
-    const fresh = await fetchWidgetWeatherQuick(props.widgetInfo.widgetId, 12000).catch(() => null);
-    if (fresh) props.renderWidget(el(fresh));
+    // 2) Refresh with fresh data under a timeout; re-render on the result.
+    const fresh = await fetchWidgetWeatherQuick(props.widgetInfo.widgetId, 12000, force).catch(
+      () => null,
+    );
+    if (fresh) props.renderWidget(el(fresh, false));
+    else if (feedback) props.renderWidget(el(last, false)); // clear "…" on a failed refresh
   };
 
   switch (props.widgetAction) {
@@ -37,7 +46,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
       break;
     case "WIDGET_CLICK":
       // The ⟳ button; the rest of the widget uses OPEN_APP directly.
-      if (props.clickAction === "REFRESH") await render();
+      if (props.clickAction === "REFRESH") await render({ force: true, feedback: true });
       break;
     default:
       break;

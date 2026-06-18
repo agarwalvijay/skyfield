@@ -137,15 +137,21 @@ export async function readLastSnapshot(): Promise<WidgetWeather | null> {
   }
 }
 
-/** Headless fetch of everything a widget displays. */
-export async function fetchWidgetWeather(widgetId: number): Promise<WidgetWeather | null> {
+/** Headless fetch of everything a widget displays. Pass force=true (explicit
+ *  refresh) to skip the cached snapshot and always hit the network. */
+export async function fetchWidgetWeather(
+  widgetId: number,
+  force = false,
+): Promise<WidgetWeather | null> {
   const loc: SavedLocation | null = await resolveWidgetLocation(widgetId);
   if (!loc) return null;
 
   // Fast path: if the app recently pulled this exact location, show *that* —
   // so the widget mirrors what the app last displayed, with no network call.
-  const cached = await readFreshSnapshot(locationKey(loc.lat, loc.lon));
-  if (cached) return cached;
+  if (!force) {
+    const cached = await readFreshSnapshot(locationKey(loc.lat, loc.lon));
+    if (cached) return cached;
+  }
 
   const units = await readUnits();
   const meta = await getPointMeta({ lat: loc.lat, lon: loc.lon });
@@ -160,13 +166,14 @@ export async function fetchWidgetWeather(widgetId: number): Promise<WidgetWeathe
   return buildWidgetWeather(loc.label, cur, forecast, alerts, units, ncLine);
 }
 
-/** fetchWidgetWeather with a hard timeout so config Save can never hang. */
+/** fetchWidgetWeather with a hard timeout so the headless task can never hang. */
 export async function fetchWidgetWeatherQuick(
   widgetId: number,
   timeoutMs = 6000,
+  force = false,
 ): Promise<WidgetWeather | null> {
   return Promise.race([
-    fetchWidgetWeather(widgetId).catch(() => null),
+    fetchWidgetWeather(widgetId, force).catch(() => null),
     new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
   ]);
 }
