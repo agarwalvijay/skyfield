@@ -124,6 +124,19 @@ async function readFreshSnapshot(key: string): Promise<WidgetWeather | null> {
   }
 }
 
+/** The last snapshot the app stored, IGNORING freshness/location — so a widget
+ *  always has something to show immediately instead of going blank while a fresh
+ *  network fetch runs (or hangs) in the headless task. */
+export async function readLastSnapshot(): Promise<WidgetWeather | null> {
+  try {
+    const raw = await AsyncStorage.getItem(SNAP_KEY);
+    if (!raw) return null;
+    return (JSON.parse(raw) as AppSnapshot).data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Headless fetch of everything a widget displays. */
 export async function fetchWidgetWeather(widgetId: number): Promise<WidgetWeather | null> {
   const loc: SavedLocation | null = await resolveWidgetLocation(widgetId);
