@@ -7,7 +7,6 @@ dist/
 *.tsbuildinfo
 
 # Expo / React Native generated native projects (regenerated via `expo prebuild`)
-mobile/android/
 mobile/ios/
 mobile/.expo/
 mobile/expo-env.d.ts
