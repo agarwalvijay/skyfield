@@ -57,26 +57,36 @@ export function RadarScreen({ alerts }: { alerts: WeatherAlert[] }) {
   };
   const cameraRef = useRef<CameraRef>(null);
 
-  // Draggable timeline scrubber. Refs hold live values so the (once-created)
-  // PanResponder never closes over stale state.
+  // Draggable timeline scrubber. We seek from ABSOLUTE screen X (gestureState)
+  // minus the track's measured screen position — never nativeEvent.locationX,
+  // which during a drag is relative to whichever (moving) child is under the
+  // finger and makes the thumb detach and flicker. Refs hold live values so the
+  // once-created PanResponder never closes over stale state.
   const framesLenRef = useRef(0);
   framesLenRef.current = radar?.frames.length ?? 0;
-  const trackWRef = useRef(240);
-  const seekTo = useRef((locationX: number) => {
+  const trackRef = useRef<View>(null);
+  const trackBox = useRef({ x: 0, w: 240 });
+  const measureTrack = () =>
+    trackRef.current?.measureInWindow((x, _y, w) => {
+      if (w > 0) trackBox.current = { x, w };
+    });
+  const seekAbs = useRef((absX: number) => {
     const len = framesLenRef.current;
-    if (len <= 1) return;
-    const ratio = Math.max(0, Math.min(1, locationX / trackWRef.current));
+    const { x, w } = trackBox.current;
+    if (len <= 1 || w <= 0) return;
+    const ratio = Math.max(0, Math.min(1, (absX - x) / w));
     setFrameIdx(Math.round(ratio * (len - 1)));
   }).current;
   const scrub = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (e) => {
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (_e, g) => {
         setPlaying(false);
-        seekTo(e.nativeEvent.locationX);
+        seekAbs(g.x0);
       },
-      onPanResponderMove: (e) => seekTo(e.nativeEvent.locationX),
+      onPanResponderMove: (_e, g) => seekAbs(g.moveX),
     }),
   ).current;
 
@@ -298,15 +308,9 @@ export function RadarScreen({ alerts }: { alerts: WeatherAlert[] }) {
               )}
             </Svg>
           </Pressable>
-          <View
-            style={s.track}
-            onLayout={(e) => {
-              trackWRef.current = e.nativeEvent.layout.width;
-            }}
-            {...scrub.panHandlers}
-          >
-            <View style={s.trackLine} />
-            <View style={[s.trackThumb, { left: `${progress * 100}%` }]} />
+          <View ref={trackRef} style={s.track} onLayout={measureTrack} {...scrub.panHandlers}>
+            <View style={s.trackLine} pointerEvents="none" />
+            <View style={[s.trackThumb, { left: `${progress * 100}%` }]} pointerEvents="none" />
           </View>
           <Text style={s.timeLabel}>
             {current
