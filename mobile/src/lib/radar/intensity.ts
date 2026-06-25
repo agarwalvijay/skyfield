@@ -6,14 +6,20 @@ export type RainLevel = 0 | 1 | 2 | 3 | 4; // none, light, moderate, heavy, inte
 
 export function pixelLevel([r, g, b, a]: [number, number, number, number]): RainLevel {
   if (a < 40) return 0; // transparent / faint anti-alias edge = no echo
-  // Low-saturation pixels are NOT real precip and must be gated out before the
-  // color ramp. Two culprits, both well below the real palette's saturation:
+
+  // EXTREME band — the heaviest returns sit ABOVE red in scheme 4 as
+  // magenta/pink/purple and white cores. These must be checked FIRST: pink is
+  // high-red+high-blue (so it sneaks past the red/orange/blue tests and used to
+  // fall through to "light"), and white is zero-saturation (so the gate below
+  // used to drop it as "no echo"). Both badly under-report violent storms.
+  if (r >= 200 && g >= 200 && b >= 200) return 4; // white / near-white core
+  if (r >= 165 && b >= 120 && g < 165 && b > g) return 4; // magenta / pink / purple
+
+  // Low-saturation pixels are NOT real precip and are gated out before the ramp:
   //   • grey halos (r≈g≈b, sat <30) — smoothing/basemap bleed at echo edges
   //   • pale tan/olive haze (e.g. (218,204,147), sat ~71) — RainViewer's lowest
-  //     sub-precipitation band that blankets huge "clear" areas; not in our
-  //     light/mod/heavy/intense legend and not actionable rain.
-  // Every genuine precip color (blue/cyan/yellow/orange/red) has sat ≥ ~100,
-  // so a single <90 gate drops both without suppressing any real return.
+  //     sub-precipitation band that blankets huge "clear" areas; not actionable.
+  // Every genuine precip color (blue/cyan/yellow/orange/red) has sat ≥ ~100.
   if (Math.max(r, g, b) - Math.min(r, g, b) < 90) return 0;
 
   // RainViewer color-scheme 4 ramp (calibrated from the live palette — note it

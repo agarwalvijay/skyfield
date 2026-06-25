@@ -111,7 +111,10 @@ export async function getRadarNowcast(
 
   const intervals: NowcastInterval[] = frames.map((f, i) => {
     const tile = tiles[i];
-    const level = tile ? pixelLevel(tile.at(px, py)) : 0;
+    // Tight neighborhood max (not a single pixel): radar has speckle/dropouts, so
+    // one dead pixel at the point shouldn't under-report intensity when the cell
+    // around you is heavy. r=1 ≈ the immediate ~1–2 km.
+    const level = tile ? ringMax(tile, px, py, 1) : 0;
     return {
       time: f.time * 1000,
       minutesFromNow: Math.round((f.time * 1000 - now) / 60000),
