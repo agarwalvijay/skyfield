@@ -20,7 +20,9 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # node 24 → npm 11, matching the lockfile generator. node 20 (npm 10)
+          # rejects the vitest/esbuild optional-dep tree as out-of-sync.
+          node-version: 24
           cache: npm
 
       - name: Build PWA
