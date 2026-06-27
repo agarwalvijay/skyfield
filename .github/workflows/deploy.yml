@@ -26,8 +26,11 @@ jobs:
           cache: npm
 
       - name: Build PWA
+        # npm install (not ci): the lockfile is generated on macOS and can't
+        # record linux-only optional deps (e.g. @emnapi/*), which `npm ci`
+        # rejects as out-of-sync. `npm install` resolves those per-platform.
         run: |
-          npm ci
+          npm install --no-audit --no-fund
           npm run build
 
       - name: Set up SSH
