@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 3×2 widget. The android:text values are SAMPLE data: they show in the
+     launcher's preview (previewLayout) and are overwritten at runtime by
+     SkyfieldSquare.bind(). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg"
+    android:padding="14dp">
+
+    <!-- Place + refresh -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_place"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="#F3F6FC"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:text="San Francisco" />
+
+        <TextView
+            android:id="@+id/widget_refresh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="6dp"
+            android:textColor="#A8C0E0"
+            android:textSize="22sp"
+            android:text="⟳" />
+    </LinearLayout>
+
+    <!-- Icon ............ temp (temp pushed to the right) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="6dp">
+
+        <TextView
+            android:id="@+id/widget_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="36sp"
+            android:text="⛅" />
+
+        <TextView
+            android:id="@+id/widget_temp"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:paddingEnd="4dp"
+            android:maxLines="1"
+            android:gravity="end"
+            android:textColor="#FFD166"
+            android:textSize="40sp"
+            android:text="68°" />
+    </LinearLayout>
+
+    <!-- Condition on its own line -->
+    <TextView
+        android:id="@+id/widget_sub"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="6dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="#CFE0F5"
+        android:textSize="13sp"
+        android:text="Partly Cloudy" />
+
+    <!-- Hi / Lo -->
+    <TextView
+        android:id="@+id/widget_hilo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="6dp"
+        android:textColor="#F3F6FC"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:text="H 72°    L 56°" />
+
+    <!-- Humidity · wind on its own line -->
+    <TextView
+        android:id="@+id/widget_windhum"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="3dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="#D6E4F5"
+        android:textSize="12sp"
+        android:text="💧 48%    WSW 11 mph" />
+
+    <TextView
+        android:id="@+id/widget_updated"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="5dp"
+        android:textColor="#A8C0E0"
+        android:textSize="10sp"
+        android:text="Updated 8:30 AM" />
+</LinearLayout>

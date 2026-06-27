@@ -110,12 +110,16 @@ export function TopBar({
   location,
   nearby,
   onOpenLocations,
+  onOpenMore,
   topInset,
 }: {
   location: SavedLocation | null;
   /** Nearest named place from NWS, shown under "Current Location". */
   nearby?: string;
   onOpenLocations: () => void;
+  /** When set (tablet dashboard), shows a settings button — the dashboard has
+   *  no bottom tab bar, so this is how you reach More/settings. */
+  onOpenMore?: () => void;
   topInset: number;
 }) {
   return (
@@ -148,13 +152,26 @@ export function TopBar({
           <Path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
       </Pressable>
-      <Pressable style={top.iconBtn} onPress={onOpenLocations}>
-        <Svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke={colors.fg} strokeWidth={2}>
-          <Line x1={4} y1={7} x2={20} y2={7} strokeLinecap="round" />
-          <Line x1={4} y1={12} x2={20} y2={12} strokeLinecap="round" />
-          <Line x1={4} y1={17} x2={14} y2={17} strokeLinecap="round" />
-        </Svg>
-      </Pressable>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Pressable style={top.iconBtn} onPress={onOpenLocations}>
+          <Svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke={colors.fg} strokeWidth={2}>
+            <Line x1={4} y1={7} x2={20} y2={7} strokeLinecap="round" />
+            <Line x1={4} y1={12} x2={20} y2={12} strokeLinecap="round" />
+            <Line x1={4} y1={17} x2={14} y2={17} strokeLinecap="round" />
+          </Svg>
+        </Pressable>
+        {onOpenMore ? (
+          <Pressable style={top.iconBtn} onPress={onOpenMore}>
+            <Svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke={colors.fg} strokeWidth={2}>
+              <Circle cx={12} cy={12} r={3} />
+              <Path
+                d="M19.4 13a1.65 1.65 0 0 0 .33 1.82l.05.05a2 2 0 1 1-2.83 2.83l-.05-.05a1.65 1.65 0 0 0-2.81 1.17V21a2 2 0 0 1-4 0v-.18a1.65 1.65 0 0 0-2.81-1.17l-.05.05a2 2 0 1 1-2.83-2.83l.05-.05A1.65 1.65 0 0 0 4.6 13a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 6.4l-.05-.05a2 2 0 1 1 2.83-2.83l.05.05A1.65 1.65 0 0 0 10.24 3H10a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 2.81 1.17l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.65 1.65 0 0 0 21 10.24V10a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+                strokeLinejoin="round"
+              />
+            </Svg>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }

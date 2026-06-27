@@ -32,15 +32,62 @@ function neighborhoodLevel(tile: DecodedTile, px: number, py: number): RainLevel
   return ringMax(tile, px, py, 18);
 }
 
+/**
+ * Max precip level over a region ALIGNED to the storm motion: long along the
+ * motion axis, narrow across it. Precip reaches a point by travelling along the
+ * motion vector, so a band off to the *side* (perpendicular) moves parallel and
+ * never arrives — a symmetric disk wrongly counts it (the 2026-06-26 Hoffman
+ * "continuing" miss: a W–E band lifting east, ~4km north, read as rain reaching
+ * the point). Elongating along-track keeps robustness to gaps/timing without the
+ * perpendicular false-positives. Falls back to a tight disk when motion is
+ * unknown (can't orient). `(cx,cy)` is the upwind source; px coords.
+ */
+function trackMax(
+  tile: DecodedTile,
+  cx: number,
+  cy: number,
+  dx: number,
+  dy: number,
+  alongHalf: number,
+  crossHalf: number,
+): RainLevel {
+  const speed = Math.hypot(dx, dy);
+  if (speed < 0.75) return ringMax(tile, cx, cy, crossHalf);
+  const ux = dx / speed;
+  const uy = dy / speed;
+  const nx = -uy; // unit perpendicular to motion
+  const ny = ux;
+  let max: RainLevel = 0;
+  for (let a = -alongHalf; a <= alongHalf; a++) {
+    for (let c = -crossHalf; c <= crossHalf; c++) {
+      const sx = Math.round(cx + a * ux + c * nx);
+      const sy = Math.round(cy + a * uy + c * ny);
+      const lvl = pixelLevel(tile.at(sx, sy));
+      if (lvl > max) max = lvl;
+    }
+  }
+  return max;
+}
+
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const lvlAt = (t: DecodedTile | null, x: number, y: number): number =>
   t ? pixelLevel(t.at(x, y)) : 0;
 
 /**
- * Estimate storm motion (px per 10-min frame) by finding the shift that best
- * aligns the precip field around the point between two frames. Returns {0,0}
- * when there's no usable signal.
+ * Estimate storm motion (px per 10-min step) by block-matching the precip field
+ * around the point between the two latest frames. Hardened for light/broken
+ * echoes, where the real shift is small and easily lost:
+ *   - FINE window sampling (every pixel, not every 2nd): a 1-px directional
+ *     component (e.g. the northward lift in the 2026-06-26 Hoffman case) is only
+ *     visible at full density — coarse sampling flattens it.
+ *   - mass weighting: heavier echoes drive the match instead of light speckle.
+ *   - only a TINY small-motion bias: enough to break exact ties toward slower
+ *     motion, but not enough to erase a genuine 1-px component (the old 0.004
+ *     bias did exactly that).
+ * Single 10-min step (not a longer baseline): light echoes decorrelate within
+ * ~20–30 min, so a longer baseline matches worse and the divide-back rounds the
+ * small component away. Returns {0,0} when there's too little echo mass.
  */
 function estimateMotion(
   prev: DecodedTile | null,
@@ -49,38 +96,38 @@ function estimateMotion(
   py: number,
 ): { dx: number; dy: number } {
   if (!prev || !now) return { dx: 0, dy: 0 };
-  const W = 14; // half window
+  const W = 14; // half match window (~14km)
   const S = 9; // max shift searched (~60 km/h at z7)
   let best = Infinity;
   let bdx = 0;
   let bdy = 0;
-  let signal = 0;
+  let wsumBest = 0;
   for (let sy = -S; sy <= S; sy++) {
     for (let sx = -S; sx <= S; sx++) {
       let sum = 0;
-      let cnt = 0;
-      for (let wy = -W; wy <= W; wy += 2) {
-        for (let wx = -W; wx <= W; wx += 2) {
+      let wsum = 0;
+      for (let wy = -W; wy <= W; wy++) {
+        for (let wx = -W; wx <= W; wx++) {
           const a = lvlAt(now, px + wx, py + wy);
           const b = lvlAt(prev, px + wx - sx, py + wy - sy);
           if (a === 0 && b === 0) continue;
+          const w = Math.max(a, b); // mass weight: heavier echoes matter more
           const d = a - b;
-          sum += d * d;
-          cnt++;
+          sum += w * d * d;
+          wsum += w;
         }
       }
-      if (cnt < 6) continue;
-      // Normalize, with a mild bias toward smaller motion to break ties.
-      const score = sum / cnt + (sx * sx + sy * sy) * 0.004;
+      if (wsum < 10) continue;
+      const score = sum / wsum + (sx * sx + sy * sy) * 0.001; // tiny tie-break only
       if (score < best) {
         best = score;
         bdx = sx;
         bdy = sy;
-        signal = cnt;
+        wsumBest = wsum;
       }
     }
   }
-  return signal > 0 ? { dx: bdx, dy: bdy } : { dx: 0, dy: 0 };
+  return wsumBest >= 10 ? { dx: bdx, dy: bdy } : { dx: 0, dy: 0 };
 }
 
 /**
@@ -144,10 +191,13 @@ export async function getRadarNowcast(
   const futureLevels: RainLevel[] = [];
   if (latestTile && (dx !== 0 || dy !== 0 || nowLevel > 0)) {
     for (let t = 1; t <= 3; t++) {
-      // Precip currently "upwind" of the point arrives at the point in t steps.
-      // Sample a small neighborhood (not one pixel) so a radar gap doesn't read
-      // as a false "dry" and over-predict clearing.
-      futureLevels.push(ringMax(latestTile, px - t * dx, py - t * dy, 9));
+      // Precip "upwind" of the point arrives in t steps. Sample a motion-aligned
+      // region around that upwind source: a TIGHT ±1px along-track (just timing
+      // slack — the three t-steps already cover distance along the track, and a
+      // wider along-window reaches back to the point's current echo and over-
+      // predicts) and ±2px across-track (ignore parallel side-bands). See
+      // trackMax.
+      futureLevels.push(trackMax(latestTile, px - t * dx, py - t * dy, dx, dy, 1, 2));
     }
     futureLevels.forEach((level, k) => {
       const min = (k + 1) * 10;

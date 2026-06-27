@@ -31,6 +31,10 @@ interface OMGeocodeResponse {
 
 const US_ZIP_RE = /^(\d{5})(?:-\d{4})?$/;
 
+/** ISO codes NWS (api.weather.gov) actually forecasts for: the US plus the
+ *  territories Open-Meteo returns under their own codes (AK/HI are "US"). */
+const NWS_COUNTRY_CODES = new Set(["US", "PR", "VI", "GU", "AS", "MP"]);
+
 interface ZippopotamResponse {
   "post code": string;
   places?: Array<{
@@ -76,23 +80,28 @@ export async function searchPlaces(
     if (results.length > 0) return results;
     // Unknown ZIP — fall through to a name search as a last resort.
   }
+  // Over-fetch (Open-Meteo has no country filter), then keep only US matches —
+  // the app is NWS-backed and US-only, so foreign hits would just dead-end.
   const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
     q,
-  )}&count=8&language=en&format=json`;
+  )}&count=20&language=en&format=json`;
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error("Geocoding failed");
   const data: OMGeocodeResponse = await res.json();
-  return (data.results ?? []).map((r) => ({
-    id: r.id,
-    name: r.name,
-    admin1: r.admin1,
-    admin2: r.admin2,
-    country: r.country,
-    countryCode: r.country_code,
-    lat: r.latitude,
-    lon: r.longitude,
-    timezone: r.timezone,
-  }));
+  return (data.results ?? [])
+    .filter((r) => r.country_code != null && NWS_COUNTRY_CODES.has(r.country_code))
+    .slice(0, 8)
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      admin1: r.admin1,
+      admin2: r.admin2,
+      country: r.country,
+      countryCode: r.country_code,
+      lat: r.latitude,
+      lon: r.longitude,
+      timezone: r.timezone,
+    }));
 }
 
 /** Compose a short, human label like "Boulder, Colorado". */

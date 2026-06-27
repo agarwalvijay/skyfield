@@ -1,16 +1,13 @@
 import { Platform } from "react-native";
-import { fetchWidgetWeather } from "./widgetData";
+import { syncWidgets } from "./widgetSync";
 
 /**
- * The widget is now NATIVE (SkyfieldLarge.java) and renders from the JSON
- * snapshot file. "Refreshing" means: fetch fresh data for the active location
- * and rewrite that file (storeAppSnapshot does the write inside
- * fetchWidgetWeather). The native widget re-reads the file on its next update
- * (periodic / resize / boot) or when the app opens. Called by the background
- * task and after unit/location changes.
+ * Refresh every configured widget: fetch fresh data for each into the store
+ * (newest-wins). The native widgets re-read their row on the next
+ * APPWIDGET_UPDATE (periodic / boot / resize / the ⟳ worker's broadcast).
+ * Called by the background task and after unit/location changes.
  */
 export async function refreshAllWidgets(): Promise<void> {
   if (Platform.OS !== "android") return;
-  // widgetId 0 → resolveWidgetLocation falls back to the active location.
-  await fetchWidgetWeather(0, true).catch(() => {});
+  await syncWidgets(undefined, true).catch(() => {});
 }

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Skyfield",
     "slug": "skyfield",
-    "version": "0.1.0",
+    "version": "0.2.7",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -13,13 +13,19 @@
       "backgroundColor": "#0a0e1a"
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "com.atsumilabs.skyfield",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Skyfield uses your location to show hyperlocal National Weather Service forecasts for exactly where you are.",
         "UIBackgroundModes": [
           "fetch",
           "processing"
+        ],
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationPortraitUpsideDown",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
         ]
       },
       "entitlements": {
@@ -49,7 +55,13 @@
       "@bacons/apple-targets",
       "expo-font",
       "expo-location",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2a6df4"
+        }
+      ],
       "expo-background-task",
       "@maplibre/maplibre-react-native",
       [

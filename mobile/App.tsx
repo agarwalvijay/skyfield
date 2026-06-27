@@ -11,12 +11,13 @@ import {
   HankenGrotesk_700Bold,
   HankenGrotesk_800ExtraBold,
 } from "@expo-google-fonts/hanken-grotesk";
-import { ActivityIndicator, AppState, Platform, Text } from "react-native";
+import { ActivityIndicator, AppState, Modal, Platform, Pressable, Text, useWindowDimensions } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { GPS_ID, useGeolocation } from "@/hooks/useGeolocation";
 import { activeLocation, useLocationStore } from "@/store/locations";
 import { useAlerts, useCurrentConditions, useForecast, useNowcast, usePointMeta } from "@/hooks/useWeather";
 import { useSettings } from "@/store/settings";
-import { buildWidgetWeather, storeAppSnapshot } from "@/widgets/widgetData";
+import { buildWidgetWeather, nowcastBarsFrom, storeAppSnapshot } from "@/widgets/widgetData";
 import { refreshAllWidgets } from "@/widgets/refreshWidgets";
 import { writeIosWidget } from "@/widgets/iosWidget";
 import { effectiveCondition } from "@/lib/weather/effective";
@@ -28,6 +29,7 @@ import { AlertBanner } from "@/components/AlertBanner";
 import { LocationSheet } from "@/components/LocationSheet";
 import { Welcome } from "@/components/Welcome";
 import { NowScreen } from "@/screens/NowScreen";
+import { DashboardScreen } from "@/screens/DashboardScreen";
 import { HourlyScreen } from "@/screens/HourlyScreen";
 import { DailyScreen } from "@/screens/DailyScreen";
 import { RadarScreen } from "@/screens/RadarScreen";
@@ -42,6 +44,15 @@ const queryClient = new QueryClient({
 
 function Main() {
   const insets = useSafeAreaInsets();
+  // Tablets get the single-page dashboard (mirrors the web); phones keep the
+  // tabbed scrolling layout. Detect by smallest side so a phone in landscape
+  // (wide but short) doesn't trip it.
+  const { width, height } = useWindowDimensions();
+  const isTablet = Math.min(width, height) >= 600;
+  // On the tablet dashboard the bottom tabs are redundant (everything's already
+  // on screen), so we hide them and reach settings via a top-bar button —
+  // mirroring the web wide layout.
+  const [moreOpen, setMoreOpen] = useState(false);
   const { status, locate } = useGeolocation(true);
   const locations = useLocationStore((s) => s.locations);
   const activeId = useLocationStore((s) => s.activeId);
@@ -95,6 +106,7 @@ function Main() {
     if (currentQ.data === undefined && !forecastQ.data) return;
     const nc = nowcastQ.data;
     const ncLine = nc && (nc.precipitatingNow || nc.type !== "none") ? nc.summary : null;
+    const nb = nowcastBarsFrom(nc ?? null);
     const snapshot = buildWidgetWeather(
       active.label,
       currentQ.data ?? null,
@@ -102,9 +114,12 @@ function Main() {
       alerts,
       { temp: tempUnit, wind: windUnit },
       ncLine,
+      nb?.bars ?? null,
+      nb?.nowIdx ?? -1,
     );
     if (Platform.OS === "android") storeAppSnapshot(active, snapshot);
-    else if (Platform.OS === "ios") writeIosWidget(snapshot);
+    else if (Platform.OS === "ios")
+      writeIosWidget(snapshot, active, { temp: tempUnit, wind: windUnit });
   }, [active, currentQ.data, forecastQ.data, alerts, nowcastQ.data, tempUnit, windUnit]);
 
   // When the app goes to the background, push the latest to widgets.
@@ -159,24 +174,52 @@ function Main() {
             location={active}
             nearby={metaQ.data?.city ? `${metaQ.data.city}, ${metaQ.data.state}` : undefined}
             onOpenLocations={() => setSheetOpen(true)}
+            onOpenMore={isTablet ? () => setMoreOpen(true) : undefined}
             topInset={insets.top}
           />
           {alerts.length > 0 && <AlertBanner alerts={alerts} />}
 
           <View style={{ flex: 1 }}>
-            {tab === "now" && <NowScreen sky={sky} onSeeDaily={() => setTab("daily")} />}
+            {tab === "now" &&
+              (isTablet ? (
+                <DashboardScreen sky={sky} alerts={alerts} />
+              ) : (
+                <NowScreen sky={sky} onSeeDaily={() => setTab("daily")} />
+              ))}
             {tab === "hourly" && <HourlyScreen />}
             {tab === "daily" && <DailyScreen accent={sky.theme.accent} />}
             {tab === "radar" && <RadarScreen alerts={alerts} />}
             {tab === "more" && <MoreScreen accent={sky.theme.accent} />}
           </View>
 
-          <TabBar
-            active={tab}
-            onChange={setTab}
-            alertCount={alerts.length}
-            bottomInset={insets.bottom}
-          />
+          {/* The dashboard already shows everything, so no bottom tabs on tablet. */}
+          {!isTablet && (
+            <TabBar
+              active={tab}
+              onChange={setTab}
+              alertCount={alerts.length}
+              bottomInset={insets.bottom}
+            />
+          )}
+
+          {/* Tablet settings — opened from the top bar (mirrors the web modal). */}
+          <Modal
+            visible={moreOpen}
+            animationType="slide"
+            transparent
+            onRequestClose={() => setMoreOpen(false)}
+          >
+            <View style={[s.moreModal, { paddingTop: insets.top + 12 }]}>
+              <View style={s.morePanel}>
+                <Pressable style={s.moreClose} onPress={() => setMoreOpen(false)} hitSlop={10}>
+                  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.fg} strokeWidth={2.2}>
+                    <Path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
+                  </Svg>
+                </Pressable>
+                <MoreScreen accent={sky.theme.accent} />
+              </View>
+            </View>
+          </Modal>
         </WeatherProvider>
       )}
 
@@ -209,4 +252,15 @@ const s = StyleSheet.create({
   app: { flex: 1, backgroundColor: colors.appBg },
   locating: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14 },
   locatingText: { fontFamily: fonts.body, fontSize: 15, color: colors.fgDim },
+  moreModal: { flex: 1, backgroundColor: "rgba(6,10,22,0.55)", alignItems: "center" },
+  morePanel: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 640,
+    backgroundColor: colors.sheetBg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: "hidden",
+  },
+  moreClose: { position: "absolute", top: 16, right: 16, zIndex: 10, padding: 6 },
 });

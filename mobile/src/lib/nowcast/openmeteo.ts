@@ -47,6 +47,10 @@ export interface Nowcast {
 /** A block counts as "wet" at/above this liquid rate per 15 min. */
 const WET_MM = 0.1;
 
+/** Live radar (with ~30-min motion projection) is authoritative within this many
+ *  minutes; the model only speaks for precip beyond it. */
+const RADAR_HORIZON_MIN = 35;
+
 interface OpenMeteoMinutely {
   time: number[];
   precipitation: number[];
@@ -209,12 +213,26 @@ export async function getNowcast(coords: Coordinates, signal?: AbortSignal): Pro
   } catch {
     /* fall through to model */
   }
+  // Live radar wins for precip happening now / nearby / approaching — it catches
+  // storms the model misses.
   if (radar && (radar.precipitatingNow || radar.hasNearby)) return radar;
 
+  let model: Nowcast;
   try {
-    return await getModelNowcast(coords, signal);
+    model = await getModelNowcast(coords, signal);
   } catch {
     if (radar) return radar; // dry radar reading is better than nothing
     throw new Error("Nowcast unavailable");
   }
+
+  // Radar is clear near-term. The model occasionally predicts "rain in ~20 min"
+  // that the live radar (clear, with ~30-min motion projection) contradicts —
+  // an edge case, but a jarring false alarm. So when radar is available, only
+  // defer to the model for precip BEYOND radar's horizon; inside it, the clear
+  // radar reading wins.
+  if (radar) {
+    const firstWet = model.intervals.find((iv) => iv.wet);
+    if (firstWet && firstWet.minutesFromNow <= RADAR_HORIZON_MIN) return radar;
+  }
+  return model;
 }

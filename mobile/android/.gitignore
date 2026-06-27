@@ -17,3 +17,7 @@ app/src/main/java/inline/
 
 # Bundle artifacts
 *.jsbundle
+
+# Release signing — NEVER commit these (back them up securely instead)
+keystore.properties
+app/upload-keystore.jks

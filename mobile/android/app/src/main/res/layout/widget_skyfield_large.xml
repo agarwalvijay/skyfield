@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 4×1 banner. The android:text values are SAMPLE data: shown in the launcher's
+     preview (previewLayout), overwritten at runtime by SkyfieldLarge.bind(). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -13,7 +15,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="26sp"
-        android:text="" />
+        android:text="⛅" />
 
     <TextView
         android:id="@+id/widget_temp"
@@ -22,7 +24,7 @@
         android:paddingStart="6dp"
         android:textColor="#FFD166"
         android:textSize="32sp"
-        android:text="--°" />
+        android:text="68°" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -40,7 +42,7 @@
             android:textColor="#F3F6FC"
             android:textStyle="bold"
             android:textSize="13sp"
-            android:text="Skyfield" />
+            android:text="San Francisco" />
 
         <TextView
             android:id="@+id/widget_sub"
@@ -51,7 +53,7 @@
             android:ellipsize="end"
             android:textColor="#CFE0F5"
             android:textSize="12sp"
-            android:text="" />
+            android:text="Partly Cloudy" />
     </LinearLayout>
 
     <LinearLayout
@@ -66,7 +68,7 @@
             android:layout_height="wrap_content"
             android:textColor="#F3F6FC"
             android:textSize="13sp"
-            android:text="" />
+            android:text="H 72°  L 56°" />
 
         <TextView
             android:id="@+id/widget_windhum"
@@ -75,7 +77,7 @@
             android:paddingTop="2dp"
             android:textColor="#D6E4F5"
             android:textSize="11sp"
-            android:text="" />
+            android:text="WSW 11 mph · 48%" />
 
         <TextView
             android:id="@+id/widget_updated"
@@ -84,6 +86,16 @@
             android:paddingTop="2dp"
             android:textColor="#A8C0E0"
             android:textSize="10sp"
-            android:text="" />
+            android:text="8:30 AM" />
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_refresh"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:padding="6dp"
+        android:text="⟳"
+        android:textColor="#A8C0E0"
+        android:textSize="18sp" />
 </LinearLayout>

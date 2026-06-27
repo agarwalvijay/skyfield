@@ -1,0 +1,36 @@
+SHORT DESCRIPTION (max 80 chars)
+================================
+Hyperlocal NWS forecasts with live radar, rain timing, alerts & widgets
+
+
+FULL DESCRIPTION (max 4000 chars)
+=================================
+Skyfield is a clean, fast weather app built directly on the United States National Weather Service — the same official forecasts and warnings meteorologists rely on, with no proprietary "blended" data in between.
+
+Your forecast is hyperlocal: Skyfield reads your exact GPS coordinates, not just the nearest city, so what you see is the weather where you actually are.
+
+WHAT YOU GET
+
+• Current conditions — temperature, feels-like, humidity, wind, and sky conditions from the nearest reporting station.
+• Hour-by-hour forecast — see exactly how the day unfolds.
+• 7-day forecast — highs, lows, and conditions at a glance.
+• Minute-by-minute rain — a short-term "next 2 hours" nowcast tells you when rain or snow is about to start or stop.
+• Live radar — animated precipitation radar you can scrub through time, centered on your location.
+• Severe weather alerts — official NWS watches and warnings, front and center, with optional push notifications.
+• Rain notifications — a heads-up the moment rain is starting or stopping near you.
+• Forecaster Discussion — read the meteorologist's own full reasoning (the raw Area Forecast Discussion) when you want the why behind the forecast.
+
+HOME-SCREEN WIDGETS
+Add a banner or square widget for current conditions, hi/lo, wind, humidity, and active alerts at a glance — refreshed automatically, with a tap-to-refresh button.
+
+MADE TO BE SIMPLE
+• No account required.
+• Choose your units — Fahrenheit/Celsius, mph / km/h / m/s / knots.
+• Track your current location, or pin saved places.
+
+DATA & ATTRIBUTION
+Weather data and alerts come from NOAA / the U.S. National Weather Service (public domain). Radar imagery © RainViewer. Maps © OpenStreetMap contributors, © CARTO. Skyfield is an independent app and is not affiliated with, endorsed by, or operated by NOAA or the National Weather Service.
+
+Coverage is currently the United States and its territories (the areas served by the NWS).
+
+An Atsumi Labs app · atsumilabs.com

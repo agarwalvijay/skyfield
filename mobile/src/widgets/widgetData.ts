@@ -1,5 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as FileSystem from "expo-file-system/legacy";
 import {
   getActiveAlerts,
   getCurrentConditions,
@@ -21,9 +20,11 @@ import {
   type TempUnit,
   type WindUnit,
 } from "@/lib/format/units";
-import { getNowcast } from "@/lib/nowcast/openmeteo";
+import { getNowcast, type Nowcast } from "@/lib/nowcast/openmeteo";
 import type { SavedLocation } from "@/store/locations";
-import { resolveWidgetLocation } from "./widgetConfigStore";
+import { readWidgetConfig, resolveWidgetLocation } from "./widgetConfigStore";
+import { freshForKey, putPlace, setBinding } from "./widgetStore";
+import { requestWidgetRepaint } from "./widgetBridge";
 
 /** Pre-formatted strings so widget components stay dumb. Honors app units. */
 export interface WidgetWeather {
@@ -41,6 +42,25 @@ export interface WidgetWeather {
   alertColor: `#${string}`;
   /** Short MinuteCast line ("Rain stopping in ~40 min"), only when relevant. */
   nowcast: string | null;
+  /** Next-2h precip bar heights (0–100) for the banner's rain chart, or null
+   *  when there's no precip (→ widget stays in its normal layout). */
+  nowcastBars: number[] | null;
+  /** Index of the "now" bar within nowcastBars (-1 if none). */
+  nowcastNowIdx: number;
+}
+
+/** Bar heights (0–100) + the "now" index from a nowcast, or null when there's
+ *  no precip in the window (→ the banner stays in its normal, non-chart layout). */
+export function nowcastBarsFrom(nc: Nowcast | null): { bars: number[]; nowIdx: number } | null {
+  if (!nc || !nc.intervals?.length || !nc.intervals.some((i) => i.wet)) return null;
+  const ivs = nc.intervals.slice(0, 16);
+  const maxMm = Math.max(0.5, ...ivs.map((i) => i.precipMm));
+  const bars = ivs.map((i) => (i.wet ? Math.max(10, Math.round((i.precipMm / maxMm) * 100)) : 4));
+  const nowIdx = ivs.reduce(
+    (best, iv, i) => (Math.abs(iv.minutesFromNow) < Math.abs(ivs[best].minutesFromNow) ? i : best),
+    0,
+  );
+  return { bars, nowIdx };
 }
 
 /** App unit settings from the persisted zustand blob (headless-safe). */
@@ -67,6 +87,8 @@ export function buildWidgetWeather(
   alerts: WeatherAlert[],
   units: { temp: TempUnit; wind: WindUnit },
   nowcast: string | null = null,
+  nowcastBars: number[] | null = null,
+  nowcastNowIdx = -1,
 ): WidgetWeather {
   const today = forecast[0];
   const hi = forecast.find((p) => p.isDaytime)?.temperature ?? null;
@@ -92,77 +114,45 @@ export function buildWidgetWeather(
     alertEvent: topAlert?.event ?? null,
     alertColor: (topAlert ? alertColor(topAlert.severity) : "#ff7a3d") as `#${string}`,
     nowcast,
+    nowcastBars,
+    nowcastNowIdx,
   };
 }
 
-// ---- App → widget snapshot ----------------------------------------------
-// The app writes what it just pulled for the active location here; widgets on
-// the *same* location reuse it instantly (no network) so they match the app.
+// ---- Publishing into the store ------------------------------------------
+// All writes go through the catalog (widgetStore.ts). The app, the background
+// task, and the on-demand ⟳ worker are all just data sources feeding the same
+// newest-wins store; none of them knows or cares which widget consumes what.
 
-const SNAP_KEY = "skyfield.appSnapshot";
-const SNAP_TTL_MS = 30 * 60 * 1000;
+const FRESH_TTL_MS = 30 * 60 * 1000;
 
-interface AppSnapshot {
-  key: string; // locationKey of the data
-  at: number; // epoch ms
-  data: WidgetWeather;
-}
-
+/** The app, after pulling its ACTIVE location, publishes it as the active row. */
 export async function storeAppSnapshot(loc: SavedLocation, data: WidgetWeather): Promise<void> {
-  const snap: AppSnapshot = { key: locationKey(loc.lat, loc.lon), at: Date.now(), data };
-  await AsyncStorage.setItem(SNAP_KEY, JSON.stringify(snap));
-  // Also write a plain JSON file the NATIVE widget provider reads from
-  // getFilesDir(). documentDirectory === filesDir on Android.
-  await writeNativeWidgetFile(data).catch(() => {});
+  await putPlace(locationKey(loc.lat, loc.lon), data, Date.now(), true);
+  requestWidgetRepaint();
 }
 
-/** File the native AppWidgetProvider reads (see SkyfieldLarge.java). */
-export const NATIVE_WIDGET_FILE = "skyfield_widget.json";
-
-async function writeNativeWidgetFile(data: WidgetWeather): Promise<void> {
-  const dir = FileSystem.documentDirectory;
-  if (!dir) return;
-  await FileSystem.writeAsStringAsync(dir + NATIVE_WIDGET_FILE, JSON.stringify(data));
-}
-
-async function readFreshSnapshot(key: string): Promise<WidgetWeather | null> {
-  try {
-    const raw = await AsyncStorage.getItem(SNAP_KEY);
-    if (!raw) return null;
-    const snap: AppSnapshot = JSON.parse(raw);
-    if (snap.key === key && Date.now() - snap.at < SNAP_TTL_MS) return snap.data;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/** The last snapshot the app stored, IGNORING freshness/location — so a widget
- *  always has something to show immediately instead of going blank while a fresh
- *  network fetch runs (or hangs) in the headless task. */
-export async function readLastSnapshot(): Promise<WidgetWeather | null> {
-  try {
-    const raw = await AsyncStorage.getItem(SNAP_KEY);
-    if (!raw) return null;
-    return (JSON.parse(raw) as AppSnapshot).data ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/** Headless fetch of everything a widget displays. Pass force=true (explicit
- *  refresh) to skip the cached snapshot and always hit the network. */
+/** Headless fetch of everything a widget displays, published into the store.
+ *  Pass force=true (explicit refresh) to skip the cached row and hit the
+ *  network. Also records the widget's subscription (binding) so the native
+ *  render half can find this widget's row. */
 export async function fetchWidgetWeather(
   widgetId: number,
   force = false,
 ): Promise<WidgetWeather | null> {
+  const cfg = await readWidgetConfig(widgetId);
   const loc: SavedLocation | null = await resolveWidgetLocation(widgetId);
   if (!loc) return null;
 
-  // Fast path: if the app recently pulled this exact location, show *that* —
-  // so the widget mirrors what the app last displayed, with no network call.
+  const key = locationKey(loc.lat, loc.lon);
+  const followsApp = cfg.locationId === "active";
+  // Subscription: a widget either follows the app ("active") or pins a key.
+  await setBinding(widgetId, followsApp ? "active" : key).catch(() => {});
+
+  // Fast path: a recently-published row for this exact location — show *that*,
+  // no network call, so the widget mirrors what the app last displayed.
   if (!force) {
-    const cached = await readFreshSnapshot(locationKey(loc.lat, loc.lon));
+    const cached = await freshForKey(key, FRESH_TTL_MS);
     if (cached) return cached;
   }
 
@@ -176,11 +166,19 @@ export async function fetchWidgetWeather(
   ]);
 
   const ncLine = nc && (nc.precipitatingNow || nc.type !== "none") ? nc.summary : null;
-  const data = buildWidgetWeather(loc.label, cur, forecast, alerts, units, ncLine);
-  // Persist so the snapshot stays in sync with what the widget actually fetched
-  // — otherwise readLastSnapshot() (the instant render) can be OLDER than the
-  // widget's current display and a refresh flashes backwards to stale data.
-  await storeAppSnapshot(loc, data).catch(() => {});
+  const nb = nowcastBarsFrom(nc);
+  const data = buildWidgetWeather(
+    loc.label,
+    cur,
+    forecast,
+    alerts,
+    units,
+    ncLine,
+    nb?.bars ?? null,
+    nb?.nowIdx ?? -1,
+  );
+  // Publish newest-wins; mark active so app-following widgets resolve to it.
+  await putPlace(key, data, Date.now(), followsApp).catch(() => {});
   return data;
 }
 

@@ -2,4 +2,5 @@
   <string name="app_name">Skyfield</string>
   <string name="widget_skyfieldsmall_description" translatable="false">Current temperature and conditions</string>
   <string name="widget_skyfieldlarge_description" translatable="false">Compact banner: conditions, hi/lo, wind, humidity, alerts</string>
+  <string name="widget_skyfieldsquare_description" translatable="false">Square: temp, conditions, hi/lo, wind, humidity, alerts</string>
 </resources>

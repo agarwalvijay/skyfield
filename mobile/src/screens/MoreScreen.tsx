@@ -168,14 +168,14 @@ export function MoreScreen({ accent }: { accent: string }) {
             <View style={s.previewClip}>
               <WidgetPreview
                 renderWidget={() => <SmallWidget data={widgetData} />}
-                width={160}
-                height={160}
+                width={250}
+                height={170}
               />
             </View>
             <Text style={s.rowSub}>
-              Add from your launcher's widget picker. Long-press a widget → Reconfigure to pin it
-              to a location. Widgets follow the app's units and refresh every 30 min (tap ⟳ for
-              instant refresh).
+              Banner and square. Add from your launcher's widget picker; long-press a widget →
+              Reconfigure to pin it to a location. Widgets follow the app's units and refresh in
+              the background (tap ⟳ for an instant refresh).
             </Text>
           </View>
         </>
