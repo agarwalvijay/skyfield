@@ -19,6 +19,20 @@ export interface DecodedTile {
   at(px: number, py: number): [number, number, number, number];
 }
 
+const TILE_CACHE_TTL_MS = 12 * 60 * 1000;
+const TILE_CACHE_MAX = 80;
+const tileCache = new Map<string, { tile: DecodedTile | null; fetchedAt: number }>();
+
+function rememberTile(url: string, tile: DecodedTile | null): DecodedTile | null {
+  tileCache.set(url, { tile, fetchedAt: Date.now() });
+  while (tileCache.size > TILE_CACHE_MAX) {
+    const oldest = tileCache.keys().next().value;
+    if (!oldest) break;
+    tileCache.delete(oldest);
+  }
+  return tile;
+}
+
 /**
  * Minimal PNG decoder (8-bit, non-interlaced, RGB/RGBA) good enough for
  * RainViewer radar tiles. Pure JS (pako for inflate) so it runs in RN too.
@@ -118,8 +132,12 @@ export function decodePng(buf: Uint8Array): DecodedTile | null {
 
 /** Fetch + decode a single radar tile. */
 export async function fetchTile(url: string, signal?: AbortSignal): Promise<DecodedTile | null> {
+  const cached = tileCache.get(url);
+  if (cached && Date.now() - cached.fetchedAt < TILE_CACHE_TTL_MS) return cached.tile;
+  if (cached) tileCache.delete(url);
+
   const res = await fetch(url, { signal });
-  if (!res.ok) return null;
+  if (!res.ok) return rememberTile(url, null);
   const buf = new Uint8Array(await res.arrayBuffer());
-  return decodePng(buf);
+  return rememberTile(url, decodePng(buf));
 }

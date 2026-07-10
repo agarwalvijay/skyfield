@@ -40,6 +40,8 @@ export interface Nowcast {
   title?: string;
   /** Radar saw precip near (not at) the point. */
   hasNearby?: boolean;
+  /** Radar projects precip reaching the point within its short motion window. */
+  hasArriving?: boolean;
   /** Current radar intensity at the point: 0 none → 4 intense (radar source only). */
   radarLevel?: number;
 }
@@ -78,6 +80,17 @@ function typeWord(t: PrecipType): string {
       return "Rain";
     default:
       return "Precipitation";
+  }
+}
+
+function typeNoun(t: PrecipType): string {
+  switch (t) {
+    case "snow":
+      return "snow";
+    case "mix":
+      return "wintry mix";
+    default:
+      return "rain";
   }
 }
 
@@ -148,6 +161,35 @@ function buildSummary(intervals: NowcastInterval[], windowMinutes: number): { su
   return { summary: `No precipitation for the next ${hrs} hr`, type: "none" };
 }
 
+function radarArrivalWithinHorizon(radar: Nowcast): boolean {
+  return radar.intervals.some((iv) => iv.estimated && iv.wet && iv.minutesFromNow <= RADAR_HORIZON_MIN);
+}
+
+function modelTypeNearRadarWindow(model: Nowcast): PrecipType {
+  const nearby = model.intervals.filter((iv) => iv.minutesFromNow <= RADAR_HORIZON_MIN);
+  return dominant(nearby);
+}
+
+function withModelPrecipType(radar: Nowcast, model: Nowcast): Nowcast {
+  const type = modelTypeNearRadarWindow(model);
+  if (type === "none" || type === "rain" || radar.type !== "rain") return radar;
+
+  const noun = typeNoun(type);
+  let summary = radar.summary
+    .replace(/\brain\b/gi, noun)
+    .replace(/\bshowers\b/gi, type === "snow" ? "snow" : noun);
+  if (radar.hasNearby && !radar.precipitatingNow && !radar.hasArriving) {
+    summary = `${typeWord(type)} nearby`;
+  }
+
+  return {
+    ...radar,
+    summary,
+    type,
+    intervals: radar.intervals.map((iv) => (iv.wet ? { ...iv, type } : iv)),
+  };
+}
+
 /** Model-based nowcast (Open-Meteo 15-min). Good for the 2-hour outlook when
  *  there's nothing on radar, but blind to live convection. */
 export async function getModelNowcast(
@@ -206,23 +248,21 @@ export async function getModelNowcast(
  * outlook when radar is clear.
  */
 export async function getNowcast(coords: Coordinates, signal?: AbortSignal): Promise<Nowcast> {
-  let radar: Nowcast | null = null;
-  try {
-    const { getRadarNowcast } = await import("./radar");
-    radar = await getRadarNowcast(coords, signal);
-  } catch {
-    /* fall through to model */
-  }
-  // Live radar wins for precip happening now / nearby / approaching — it catches
-  // storms the model misses.
-  if (radar && (radar.precipitatingNow || radar.hasNearby)) return radar;
+  const radarPromise = import("./radar")
+    .then(({ getRadarNowcast }) => getRadarNowcast(coords, signal))
+    .catch(() => null);
+  const modelPromise = getModelNowcast(coords, signal).catch(() => null);
+  const [radar, model] = await Promise.all([radarPromise, modelPromise]);
 
-  let model: Nowcast;
-  try {
-    model = await getModelNowcast(coords, signal);
-  } catch {
-    if (radar) return radar; // dry radar reading is better than nothing
+  if (!model) {
+    if (radar) return radar; // radar reading is better than nothing
     throw new Error("Nowcast unavailable");
+  }
+
+  // Live radar wins for precip happening now or motion-projected to arrive soon;
+  // the model contributes precip type so radar-driven snow/mix is not called rain.
+  if (radar && (radar.precipitatingNow || radar.hasArriving || radarArrivalWithinHorizon(radar))) {
+    return withModelPrecipType(radar, model);
   }
 
   // Radar is clear near-term. The model occasionally predicts "rain in ~20 min"
@@ -233,6 +273,7 @@ export async function getNowcast(coords: Coordinates, signal?: AbortSignal): Pro
   if (radar) {
     const firstWet = model.intervals.find((iv) => iv.wet);
     if (firstWet && firstWet.minutesFromNow <= RADAR_HORIZON_MIN) return radar;
+    if (!firstWet && radar.hasNearby) return radar;
   }
   return model;
 }

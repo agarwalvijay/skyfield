@@ -104,8 +104,8 @@ export function useNowcast(coords: Coordinates | null) {
     queryKey: ["nowcast", coords && key(coords.lat, coords.lon)],
     queryFn: ({ signal }) => getNowcast(coords!, signal),
     enabled: !!coords,
-    staleTime: 1000 * 60 * 5,
-    refetchInterval: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 2,
+    refetchInterval: 1000 * 60 * 3,
   });
 }
 
